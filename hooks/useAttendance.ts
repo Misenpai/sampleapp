@@ -2,9 +2,9 @@ import { CameraCapturedPicture } from "expo-camera";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 
+import uploadAttendanceData from "@/services/attendanceService";
 import getOrCreateUserId from "../services/UserId";
 import { AudioRecording, ViewMode } from "../types/attendance";
-import uploadAttendanceData from "@/services/attendanceService";
 
 export function useAttendance() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -17,36 +17,34 @@ export function useAttendance() {
   const [uploading, setUploading] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [retakeMode, setRetakeMode] = useState(false);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState<
+    string | null
+  >(null);
 
   const TOTAL_PHOTOS = 3;
 
   useEffect(() => {
-    const initializeUserId = async () => {
+    const init = async () => {
       try {
         const id = await getOrCreateUserId();
-        console.log("User ID fetched:", id);
-        if (!id) {
-          throw new Error("User ID is null or undefined");
-        }
+        if (!id) throw new Error("User ID null");
         setUserId(id);
-      } catch (error) {
-        console.error("Error initializing user ID:", error);
+      } catch {
         Alert.alert("Error", "Failed to initialize user ID");
       } finally {
         setIsLoadingUserId(false);
       }
     };
-    initializeUserId();
+    init();
   }, []);
 
   const handleUpload = async () => {
     if (!userId) {
-      Alert.alert("Error", "User ID not found. Please try again.");
+      Alert.alert("Error", "User ID not found");
       return;
     }
-
     if (photos.length < TOTAL_PHOTOS) {
-      Alert.alert("Error", "Please take all 3 photos before saving.");
+      Alert.alert("Error", "Please take all 3 photos");
       return;
     }
 
@@ -56,21 +54,18 @@ export function useAttendance() {
         userId,
         photos,
         audioRecording: audioRecording || undefined,
+        location: selectedLocationLabel,
       });
 
       if (result.success) {
-        Alert.alert("Success", "Attendance recorded successfully!", [
+        Alert.alert("Success", "Attendance recorded!", [
           { text: "OK", onPress: resetAll },
         ]);
       } else {
-        Alert.alert(
-          "Error",
-          `Upload failed: ${result.error ?? "Unknown error"}`
-        );
+        Alert.alert("Error", result.error ?? "Upload failed");
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to upload data");
-      console.error("Upload error:", error);
+    } catch {
+      Alert.alert("Error", "Upload error");
     } finally {
       setUploading(false);
     }
@@ -82,10 +77,10 @@ export function useAttendance() {
     setCurrentPhotoIndex(0);
     setCurrentView("home");
     setRetakeMode(false);
+    setSelectedLocationLabel(null);
   };
 
   return {
-    // State
     userId,
     isLoadingUserId,
     photos,
@@ -95,13 +90,13 @@ export function useAttendance() {
     currentPhotoIndex,
     retakeMode,
     TOTAL_PHOTOS,
-
-    // Actions
+    selectedLocationLabel,
     setPhotos,
     setAudioRecording,
     setCurrentView,
     setCurrentPhotoIndex,
     setRetakeMode,
+    setSelectedLocationLabel,
     handleUpload,
     resetAll,
   };

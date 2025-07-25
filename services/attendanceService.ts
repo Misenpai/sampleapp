@@ -5,7 +5,6 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 interface Photo {
   uri: string;
 }
-
 interface AudioRecording {
   uri: string;
 }
@@ -14,59 +13,51 @@ interface AttendanceProps {
   userId: string;
   photos: Photo[];
   audioRecording?: AudioRecording;
+  location?: string | null;
 }
 
 const uploadAttendanceData = async ({
   userId,
   photos,
   audioRecording,
+  location,
 }: AttendanceProps): Promise<{ success: boolean; error?: string }> => {
   try {
-    const timestamp = Date.now();
+    const ts = Date.now();
     const photoUrls: string[] = [];
-    let audioUrl: string | null = null;
 
     for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      const response = await fetch(photo.uri);
-      const photoBlop = await response.blob();
+      const res = await fetch(photos[i].uri);
+      const blob = await res.blob();
       const photoRef = ref(
         storage,
-        `attendance/${userId}/${timestamp}/photo_${i + 1}.jpg`
+        `attendance/${userId}/${ts}/photo_${i + 1}.jpg`
       );
-
-      await uploadBytes(photoRef, photoBlop);
-      const photoUrl = await getDownloadURL(photoRef);
-      photoUrls.push(photoUrl);
+      await uploadBytes(photoRef, blob);
+      photoUrls.push(await getDownloadURL(photoRef));
     }
 
+    let audioUrl: string | null = null;
     if (audioRecording) {
-      const response = await fetch(audioRecording.uri);
-      const audioBlop = await response.blob();
-      const audioRef = ref(
-        storage,
-        `attendance/${userId}/${timestamp}/audio_rec.m4a}`
-      );
-      await uploadBytes(audioRef, audioBlop);
+      const res = await fetch(audioRecording.uri);
+      const blob = await res.blob();
+      const audioRef = ref(storage, `attendance/${userId}/${ts}/audio_rec.m4a`);
+      await uploadBytes(audioRef, blob);
       audioUrl = await getDownloadURL(audioRef);
     }
-    const attendanceDoc = {
+
+    await addDoc(collection(db, "attendance"), {
       userId,
       photoUrls,
       audioUrl,
+      location,
       timestamp: Timestamp.now(),
       createdAt: new Date().toISOString(),
-    };
+    });
 
-    const docRef = await addDoc(collection(db, "attendance"), attendanceDoc);
-    console.log("Attendance record created with ID: ", docRef.id);
     return { success: true };
-  } catch (error) {
-    console.error("Error uploading attendance:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+  } catch (e: any) {
+    return { success: false, error: e.message };
   }
 };
 
