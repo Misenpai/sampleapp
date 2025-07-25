@@ -1,4 +1,4 @@
-import { GeofenceLocation } from "../types/geofence";
+import { GeofenceLocation } from "@/types/geofence";
 
 export const GEOFENCE_LOCATIONS: GeofenceLocation[] = [
   {

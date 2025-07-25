@@ -1,3 +1,5 @@
+import { MapShapeType } from "react-native-leaflet-view";
+
 export interface LatLng {
   lat: number;
   lng: number;
@@ -10,16 +12,8 @@ export interface GeofenceLocation {
   radius: number;
 }
 
-export interface MapMarker {
-  id: string;
-  position: LatLng;
-  icon: string;
-  size: [number, number];
-  anchor: [number, number];
-}
-
 export interface MapShape {
-  shapeType: any;
+  shapeType: MapShapeType;
   color: string;
   id: string;
   center: LatLng;
@@ -32,4 +26,12 @@ export interface MapLayer {
   baseLayer: boolean;
   url: string;
   attribution: string;
+}
+
+export interface MapMarker {
+  id: string;
+  position: LatLng;
+  icon: string;
+  size: [number, number];
+  anchor: [number, number];
 }

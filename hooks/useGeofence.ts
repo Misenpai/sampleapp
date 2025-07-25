@@ -1,18 +1,32 @@
 import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
+import { LatLng, MapLayer, MapMarker, MapShape } from "@/types/geofence";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { MapShapeType } from "react-native-leaflet-view";
-import { LatLng, MapLayer, MapMarker, MapShape } from "../types/geofence";
 
-export function useGeofence() {
+interface UseGeofenceProps {
+  selectedGeofenceId?: string | null;
+}
+
+export function useGeofence(selectedGeofenceId?: string | null) {
   const [html, setHtml] = useState<string | null>(null);
   const [userPos, setUserPos] = useState<LatLng | null>(null);
   const [initialPos, setInitialPos] = useState<LatLng | null>(null);
   const [currentLocation, setCurrentLocation] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Filter geofence locations based on selected ID
+  const filteredGeofenceLocations = useMemo(() => {
+    if (!selectedGeofenceId) {
+      return GEOFENCE_LOCATIONS; // Show all when no filter is applied
+    }
+    return GEOFENCE_LOCATIONS.filter(
+      (location) => location.id === selectedGeofenceId
+    );
+  }, [selectedGeofenceId]);
 
   const haversine = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -33,6 +47,7 @@ export function useGeofence() {
 
   const checkGeofences = useCallback(
     (position: LatLng) => {
+      // Always check against all geofences for location detection, not just filtered ones
       for (const geofence of GEOFENCE_LOCATIONS) {
         const distance = haversine(
           position.lat,
@@ -50,16 +65,17 @@ export function useGeofence() {
     [haversine]
   );
 
+  // Map shapes based on filtered locations
   const mapShapes = useMemo(
     (): MapShape[] =>
-      GEOFENCE_LOCATIONS.map((geofence, index) => ({
+      filteredGeofenceLocations.map((geofence, index) => ({
         shapeType: MapShapeType.CIRCLE,
         color: index === 0 ? "#00f" : "#f00",
         id: geofence.id,
         center: geofence.center,
         radius: geofence.radius,
       })),
-    []
+    [filteredGeofenceLocations]
   );
 
   const mapLayers = useMemo(
@@ -76,9 +92,10 @@ export function useGeofence() {
     []
   );
 
+  // Static label markers based on filtered locations
   const staticLabelMarkers = useMemo(
     (): MapMarker[] =>
-      GEOFENCE_LOCATIONS.map((g, idx) => {
+      filteredGeofenceLocations.map((g, idx) => {
         const offsetLat = g.center.lat + (idx === 0 ? 0.00015 : 0.00015);
         const offsetLng = g.center.lng + (idx === 0 ? -0.0 : -0.0);
 
@@ -118,7 +135,7 @@ export function useGeofence() {
           anchor: [50, 35],
         };
       }),
-    []
+    [filteredGeofenceLocations]
   );
 
   const mapMarkers = useMemo((): MapMarker[] => {
@@ -147,6 +164,30 @@ export function useGeofence() {
 
     return markers;
   }, [userPos, staticLabelMarkers]);
+
+
+  const mapCenter = useMemo((): LatLng | null => {
+    if (filteredGeofenceLocations.length === 0) {
+      return initialPos; 
+    }
+
+    if (filteredGeofenceLocations.length === 1) {
+      return filteredGeofenceLocations[0].center; 
+    }
+    const totalLat = filteredGeofenceLocations.reduce(
+      (sum, loc) => sum + loc.center.lat,
+      0
+    );
+    const totalLng = filteredGeofenceLocations.reduce(
+      (sum, loc) => sum + loc.center.lng,
+      0
+    );
+
+    return {
+      lat: totalLat / filteredGeofenceLocations.length,
+      lng: totalLng / filteredGeofenceLocations.length,
+    };
+  }, [filteredGeofenceLocations, initialPos]);
 
   useEffect(() => {
     const initializeHtml = async () => {
@@ -230,5 +271,7 @@ export function useGeofence() {
     mapShapes,
     mapLayers,
     mapMarkers,
+    mapCenter: mapCenter || initialPos, // Use calculated center or fallback to initial position
+    filteredGeofenceLocations,
   };
 }

@@ -1,20 +1,25 @@
+
 import { mapStyles } from "@/constants/style";
+import { useGeofence } from "@/hooks/useGeofence";
 import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { LeafletView } from "react-native-leaflet-view";
-import { useGeofence } from "../../hooks/useGeofence";
 
-export function GeofenceMap() {
+interface GeofenceMapProps {
+  selectedGeofenceId?: string | null;
+}
+
+export function GeofenceMap({ selectedGeofenceId }: GeofenceMapProps) {
   const {
     html,
     userPos,
     initialPos,
-    currentLocation,
     isInitialized,
     mapShapes,
     mapLayers,
     mapMarkers,
-  } = useGeofence();
+    mapCenter,
+  } = useGeofence(selectedGeofenceId);
 
   if (!html || !userPos || !initialPos || !isInitialized) {
     return (
@@ -29,7 +34,7 @@ export function GeofenceMap() {
     <View style={mapStyles.container}>
       <LeafletView
         source={{ html }}
-        mapCenterPosition={initialPos}
+        mapCenterPosition={mapCenter}
         zoom={20}
         mapLayers={mapLayers}
         mapShapes={mapShapes}

@@ -392,6 +392,17 @@ export const expandedMapStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  dropdownContainer: {
+    position: "absolute",
+    bottom: 20, // <-- moved to bottom
+    left: 0,
+    right: 0,
+    zIndex: 1001,
+    paddingHorizontal: 16,
+  },
+  mapContainer: {
+    flex: 1,
+  },
 });
 
 export const mapStyles = StyleSheet.create({
@@ -453,9 +464,75 @@ export const locationStatusStyles = StyleSheet.create({
 
 export const attendanceContainerStyles = StyleSheet.create({
   container: {
-    marginTop: 40, 
+    marginTop: 40,
   },
   contentContainer: {
-    paddingBottom: 20, 
+    paddingBottom: 20,
   },
 });
+
+export const dropdownStyles = {
+  container: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    zIndex: 1000,
+  },
+  selector: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 48,
+  },
+  selectorText: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+    marginRight: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: 20,
+  },
+  dropdownMenu: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    maxHeight: 300,
+    minWidth: 250,
+    maxWidth: 350,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  option: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  selectedOption: {
+    backgroundColor: "#f8f9ff",
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  selectedOptionText: {
+    color: "#007AFF",
+    fontWeight: "500" as const,
+  },
+};

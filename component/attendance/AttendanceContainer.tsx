@@ -1,10 +1,25 @@
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import React, { useMemo, useState } from "react";
-import { FlatList, ListRenderItem } from "react-native";
+import {
+  FlatList,
+  ListRenderItem,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { attendanceContainerStyles, globalStyles } from "@/constants/style";
-import { useAttendance } from "../../hooks/useAttendance";
-import { useAudio } from "../../hooks/useAudio";
-import { useCamera } from "../../hooks/useCamera";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useAudio } from "@/hooks/useAudio";
+import { useCamera } from "@/hooks/useCamera";
+
+import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
+import {
+  attendanceContainerStyles,
+  dropdownStyles,
+  globalStyles,
+} from "@/constants/style";
 import { AudioRecorder } from "../audio/AudioRecorder";
 import { CameraView } from "../camera/CameraView";
 import { ExpandedMapView } from "../map/ExpandedMapView";
@@ -16,7 +31,12 @@ import { HomeView } from "./HomeView";
 
 type ListItem = {
   id: string;
-  type: "map" | "attendance";
+  type: "dropdown" | "map" | "attendance";
+};
+
+type DropdownOption = {
+  id: string;
+  label: string;
 };
 
 export function AttendanceContainer() {
@@ -24,10 +44,106 @@ export function AttendanceContainer() {
   const camera = useCamera();
   const audio = useAudio();
   const [showExpandedMap, setShowExpandedMap] = useState(false);
+  const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(
+    null
+  );
+  const [dropdownVisible, setDropdownVisible] = useState(false);
 
-  const mapComponent = useMemo(() => <GeofenceMap />, []);
+  const dropdownOptions: DropdownOption[] = useMemo(() => {
+    const options: DropdownOption[] = [
+      { id: "all", label: "Show All Departments" },
+    ];
+
+    GEOFENCE_LOCATIONS.forEach((location) => {
+      options.push({
+        id: location.id,
+        label: location.label,
+      });
+    });
+
+    return options;
+  }, []);
+
+  const selectedOptionLabel = useMemo(() => {
+    if (!selectedGeofenceId) return "Show All Departments";
+    const option = dropdownOptions.find((opt) => opt.id === selectedGeofenceId);
+    return option?.label || "Show All Departments";
+  }, [selectedGeofenceId, dropdownOptions]);
+
+  const mapComponent = useMemo(
+    () => <GeofenceMap selectedGeofenceId={selectedGeofenceId} />,
+    [selectedGeofenceId]
+  );
+
+  const handleDropdownSelect = (optionId: string) => {
+    setSelectedGeofenceId(optionId === "all" ? null : optionId);
+    setDropdownVisible(false);
+  };
+
+  const renderDropdown = () => (
+    <View style={dropdownStyles.container}>
+      <TouchableOpacity
+        style={dropdownStyles.selector}
+        onPress={() => setDropdownVisible(true)}
+      >
+        <Text style={dropdownStyles.selectorText} numberOfLines={1}>
+          {selectedOptionLabel}
+        </Text>
+        <FontAwesome6
+          name={dropdownVisible ? "chevron-up" : "chevron-down"}
+          size={14}
+          color="#666"
+        />
+      </TouchableOpacity>
+
+      <Modal
+        visible={dropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={dropdownStyles.modalOverlay}
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={dropdownStyles.dropdownMenu}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {dropdownOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    dropdownStyles.option,
+                    (selectedGeofenceId === option.id ||
+                      (selectedGeofenceId === null && option.id === "all")) &&
+                      dropdownStyles.selectedOption,
+                  ]}
+                  onPress={() => handleDropdownSelect(option.id)}
+                >
+                  <Text
+                    style={[
+                      dropdownStyles.optionText,
+                      (selectedGeofenceId === option.id ||
+                        (selectedGeofenceId === null && option.id === "all")) &&
+                        dropdownStyles.selectedOptionText,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {(selectedGeofenceId === option.id ||
+                    (selectedGeofenceId === null && option.id === "all")) && (
+                    <FontAwesome6 name="check" size={14} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
 
   const data: ListItem[] = [
+    { id: "dropdown", type: "dropdown" },
     { id: "map", type: "map" },
     { id: "attendance", type: "attendance" },
   ];
@@ -49,6 +165,7 @@ export function AttendanceContainer() {
       <ExpandedMapView
         onClose={() => setShowExpandedMap(false)}
         mapComponent={mapComponent}
+        dropdownComponent={renderDropdown()}
       />
     );
   }
@@ -100,6 +217,8 @@ export function AttendanceContainer() {
     default:
       const renderItem: ListRenderItem<ListItem> = ({ item }) => {
         switch (item.type) {
+          case "dropdown":
+            return renderDropdown();
           case "map":
             return (
               <MapCard
