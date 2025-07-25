@@ -72,40 +72,78 @@ export function AttendanceContainer() {
     setDropdownVisible(false);
   };
 
-  /* ---------- geofence check ---------- */
-  const isInsideSelectedGeofence = () => {
-    if (!attendance.selectedLocationLabel) return false;
-    const fence = GEOFENCE_LOCATIONS.find(
-      (g) => g.label === attendance.selectedLocationLabel
-    );
-    if (!fence || !geofence.userPos) return false;
+  /* ---------- NEW: resolve final location ---------- */
+  const resolveAttendanceLocation = () => {
+    // 1. If user picked a specific department
+    if (attendance.selectedLocationLabel) {
+      // check if user is inside that department
+      const fence = GEOFENCE_LOCATIONS.find(
+        (g) => g.label === attendance.selectedLocationLabel
+      );
+      if (fence && geofence.userPos) {
+        const R = 6371000;
+        const toRad = (deg: number) => (deg * Math.PI) / 180;
+        const dLat = toRad(fence.center.lat - geofence.userPos.lat);
+        const dLng = toRad(fence.center.lng - geofence.userPos.lng);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(geofence.userPos.lat)) *
+            Math.cos(toRad(fence.center.lat)) *
+            Math.sin(dLng / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const inside = R * c <= fence.radius;
+        if (inside) return attendance.selectedLocationLabel;
+      }
+      // not inside that department → default
+      return "IIT Guwahati";
+    }
 
-    const R = 6371000;
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const dLat = toRad(fence.center.lat - geofence.userPos.lat);
-    const dLng = toRad(fence.center.lng - geofence.userPos.lng);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(geofence.userPos.lat)) *
-        Math.cos(toRad(fence.center.lat)) *
-        Math.sin(dLng / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c <= fence.radius;
+    // 2. "Show All Departments" → auto-detect
+    for (const g of GEOFENCE_LOCATIONS) {
+      if (!geofence.userPos) break;
+      const R = 6371000;
+      const toRad = (deg: number) => (deg * Math.PI) / 180;
+      const dLat = toRad(g.center.lat - geofence.userPos.lat);
+      const dLng = toRad(g.center.lng - geofence.userPos.lng);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(geofence.userPos.lat)) *
+          Math.cos(toRad(g.center.lat)) *
+          Math.sin(dLng / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (R * c <= g.radius) return g.label;
+    }
+    // fallback
+    return "IIT Guwahati";
   };
 
-  /* ---------- upload gate ---------- */
   const handleUpload = async () => {
-    if (!attendance.selectedLocationLabel) {
-      alert("Please select a department first.");
+    const finalLocation = resolveAttendanceLocation();
+    if (!attendance.userId) {
+      attendance.handleUpload(); // will show its own alert
       return;
     }
-    if (!isInsideSelectedGeofence()) {
-      alert(
-        `You must be inside ${attendance.selectedLocationLabel} to record attendance.`
+    attendance.setUploading(true);
+    try {
+      const result = await import("@/services/attendanceService").then((m) =>
+        m.default({
+          userId: attendance.userId!,
+          photos: attendance.photos,
+          audioRecording: attendance.audioRecording || undefined,
+          location: finalLocation,
+        })
       );
-      return;
+
+      if (result.success) {
+        attendance.resetAll();
+      } else {
+        alert(result.error ?? "Upload failed");
+      }
+    } catch {
+      alert("Upload error");
+    } finally {
+      attendance.setUploading(false);
     }
-    await attendance.handleUpload();
   };
 
   /* ---------- dropdown render ---------- */
@@ -168,7 +206,7 @@ export function AttendanceContainer() {
     </View>
   );
 
-  const mapComponent = useMemo(
+  const mapComponent = React.useMemo(
     () => <GeofenceMap selectedGeofenceId={selectedGeofenceId} />,
     [selectedGeofenceId]
   );

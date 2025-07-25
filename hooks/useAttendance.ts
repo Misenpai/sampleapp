@@ -99,5 +99,6 @@ export function useAttendance() {
     setSelectedLocationLabel,
     handleUpload,
     resetAll,
+    setUploading,
   };
 }
