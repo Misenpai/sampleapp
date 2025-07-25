@@ -343,3 +343,119 @@ export const permissionStyles = StyleSheet.create({
     color: colors.gray.dark,
   },
 });
+
+export const mapCardStyles = StyleSheet.create({
+  container: {
+    margin: 20,
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  mapContainer: {
+    height: 200,
+    position: "relative",
+  },
+  expandButton: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    padding: 8,
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export const expandedMapStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: "relative",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    padding: 12,
+    borderRadius: 20,
+    zIndex: 1000,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export const mapStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#666",
+  },
+});
+
+export const locationStatusStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    right: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  inside: {
+    backgroundColor: "#d4edda",
+    borderColor: "#c3e6cb",
+    borderWidth: 1,
+  },
+  outside: {
+    backgroundColor: "#f8d7da",
+    borderColor: "#f5c6cb",
+    borderWidth: 1,
+  },
+  icon: {
+    fontSize: 16,
+    marginRight: 8,
+    color: "#495057",
+  },
+  text: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#495057",
+    flex: 1,
+  },
+});
+
+export const attendanceContainerStyles = StyleSheet.create({
+  container: {
+    marginTop: 40, 
+  },
+  contentContainer: {
+    paddingBottom: 20, 
+  },
+});

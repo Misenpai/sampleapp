@@ -1,17 +1,33 @@
-import React from "react";
+import React, { useState } from "react";
+import { FlatList, ListRenderItem } from "react-native";
+
+import { attendanceContainerStyles, globalStyles } from "@/constants/style";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useAudio } from "../../hooks/useAudio";
 import { useCamera } from "../../hooks/useCamera";
 import { AudioRecorder } from "../audio/AudioRecorder";
 import { CameraView } from "../camera/CameraView";
+import { ExpandedMapView } from "../map/ExpandedMapView";
+import { MapCard } from "../map/MapCard";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { PermissionScreen } from "../ui/PermissionScreen";
 import { HomeView } from "./HomeView";
+
+type ListItem = {
+  id: string;
+  type: "map" | "attendance";
+};
 
 export function AttendanceContainer() {
   const attendance = useAttendance();
   const camera = useCamera();
   const audio = useAudio();
+  const [showExpandedMap, setShowExpandedMap] = useState(false);
+
+  const data: ListItem[] = [
+    { id: "map", type: "map" },
+    { id: "attendance", type: "attendance" },
+  ];
 
   if (attendance.isLoadingUserId) {
     return <LoadingScreen text="Loading user data..." />;
@@ -23,6 +39,10 @@ export function AttendanceContainer() {
 
   if (attendance.uploading) {
     return <LoadingScreen text="Uploading data..." subtext="Please wait" />;
+  }
+
+  if (showExpandedMap) {
+    return <ExpandedMapView onClose={() => setShowExpandedMap(false)} />;
   }
 
   switch (attendance.currentView) {
@@ -70,28 +90,48 @@ export function AttendanceContainer() {
       );
 
     default:
+      const renderItem: ListRenderItem<ListItem> = ({ item }) => {
+        switch (item.type) {
+          case "map":
+            return <MapCard onExpand={() => setShowExpandedMap(true)} />;
+          case "attendance":
+            return (
+              <HomeView
+                photos={attendance.photos}
+                audioRecording={attendance.audioRecording}
+                onTakePhotos={() => {
+                  attendance.setCurrentPhotoIndex(0);
+                  attendance.setRetakeMode(false);
+                  attendance.setCurrentView("camera");
+                }}
+                onRetakePhoto={(index) => {
+                  attendance.setCurrentPhotoIndex(index);
+                  attendance.setRetakeMode(true);
+                  attendance.setCurrentView("camera");
+                }}
+                onRetakeAll={() => {
+                  attendance.resetAll();
+                  attendance.setCurrentView("camera");
+                }}
+                onRecordAudio={() => attendance.setCurrentView("audioRecorder")}
+                onUpload={attendance.handleUpload}
+                uploading={attendance.uploading}
+                totalPhotos={attendance.TOTAL_PHOTOS}
+              />
+            );
+          default:
+            return null;
+        }
+      };
+
       return (
-        <HomeView
-          photos={attendance.photos}
-          audioRecording={attendance.audioRecording}
-          onTakePhotos={() => {
-            attendance.setCurrentPhotoIndex(0);
-            attendance.setRetakeMode(false);
-            attendance.setCurrentView("camera");
-          }}
-          onRetakePhoto={(index) => {
-            attendance.setCurrentPhotoIndex(index);
-            attendance.setRetakeMode(true);
-            attendance.setCurrentView("camera");
-          }}
-          onRetakeAll={() => {
-            attendance.resetAll();
-            attendance.setCurrentView("camera");
-          }}
-          onRecordAudio={() => attendance.setCurrentView("audioRecorder")}
-          onUpload={attendance.handleUpload}
-          uploading={attendance.uploading}
-          totalPhotos={attendance.TOTAL_PHOTOS}
+        <FlatList
+          data={data}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          style={[globalStyles.container, attendanceContainerStyles.container]}
+          contentContainerStyle={attendanceContainerStyles.contentContainer}
+          showsVerticalScrollIndicator={false}
         />
       );
   }
