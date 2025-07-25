@@ -1,16 +1,10 @@
-import React from 'react';
-import { View, ActivityIndicator, Text } from 'react-native';
-import { LeafletView } from 'react-native-leaflet-view';
-import { LocationStatus } from './LocationStatus';
-import { useGeofence } from '../../hooks/useGeofence';
-import { mapStyles } from '@/constants/style';
+import { mapStyles } from "@/constants/style";
+import React from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { LeafletView } from "react-native-leaflet-view";
+import { useGeofence } from "../../hooks/useGeofence";
 
-
-interface GeofenceMapProps {
-  showLocationStatus?: boolean;
-}
-
-export function GeofenceMap({ showLocationStatus = true }: GeofenceMapProps) {
+export function GeofenceMap() {
   const {
     html,
     userPos,
@@ -42,10 +36,6 @@ export function GeofenceMap({ showLocationStatus = true }: GeofenceMapProps) {
         mapMarkers={mapMarkers}
         doDebug={false}
       />
-      
-      {showLocationStatus && (
-        <LocationStatus currentLocation={currentLocation} />
-      )}
     </View>
   );
 }

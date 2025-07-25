@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { FlatList, ListRenderItem } from "react-native";
 
 import { attendanceContainerStyles, globalStyles } from "@/constants/style";
@@ -8,6 +8,7 @@ import { useCamera } from "../../hooks/useCamera";
 import { AudioRecorder } from "../audio/AudioRecorder";
 import { CameraView } from "../camera/CameraView";
 import { ExpandedMapView } from "../map/ExpandedMapView";
+import { GeofenceMap } from "../map/GeofenceMap";
 import { MapCard } from "../map/MapCard";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { PermissionScreen } from "../ui/PermissionScreen";
@@ -23,6 +24,8 @@ export function AttendanceContainer() {
   const camera = useCamera();
   const audio = useAudio();
   const [showExpandedMap, setShowExpandedMap] = useState(false);
+
+  const mapComponent = useMemo(() => <GeofenceMap />, []);
 
   const data: ListItem[] = [
     { id: "map", type: "map" },
@@ -42,7 +45,12 @@ export function AttendanceContainer() {
   }
 
   if (showExpandedMap) {
-    return <ExpandedMapView onClose={() => setShowExpandedMap(false)} />;
+    return (
+      <ExpandedMapView
+        onClose={() => setShowExpandedMap(false)}
+        mapComponent={mapComponent}
+      />
+    );
   }
 
   switch (attendance.currentView) {
@@ -93,7 +101,12 @@ export function AttendanceContainer() {
       const renderItem: ListRenderItem<ListItem> = ({ item }) => {
         switch (item.type) {
           case "map":
-            return <MapCard onExpand={() => setShowExpandedMap(true)} />;
+            return (
+              <MapCard
+                onExpand={() => setShowExpandedMap(true)}
+                mapComponent={mapComponent}
+              />
+            );
           case "attendance":
             return (
               <HomeView
