@@ -7,10 +7,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { MapShapeType } from "react-native-leaflet-view";
 
-interface UseGeofenceProps {
-  selectedGeofenceId?: string | null;
-}
-
 export function useGeofence(selectedGeofenceId?: string | null) {
   const [html, setHtml] = useState<string | null>(null);
   const [userPos, setUserPos] = useState<LatLng | null>(null);
@@ -165,14 +161,13 @@ export function useGeofence(selectedGeofenceId?: string | null) {
     return markers;
   }, [userPos, staticLabelMarkers]);
 
-
   const mapCenter = useMemo((): LatLng | null => {
     if (filteredGeofenceLocations.length === 0) {
-      return initialPos; 
+      return initialPos;
     }
 
     if (filteredGeofenceLocations.length === 1) {
-      return filteredGeofenceLocations[0].center; 
+      return filteredGeofenceLocations[0].center;
     }
     const totalLat = filteredGeofenceLocations.reduce(
       (sum, loc) => sum + loc.center.lat,

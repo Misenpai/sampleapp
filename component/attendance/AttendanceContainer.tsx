@@ -45,6 +45,8 @@ export function AttendanceContainer() {
     null
   );
 
+  const [isMapTouched, setIsMapTouched] = useState(false);
+
   /* ---------- dropdown options ---------- */
   const dropdownOptions = useMemo(() => {
     const opts = [{ id: "all", label: "Show All Departments" }];
@@ -285,6 +287,8 @@ export function AttendanceContainer() {
               <MapCard
                 onExpand={() => setShowExpandedMap(true)}
                 mapComponent={mapComponent}
+                onMapTouchStart={() => setIsMapTouched(true)}
+                onMapTouchEnd={() => setIsMapTouched(false)}
               />
             );
           case "attendance":
@@ -326,6 +330,7 @@ export function AttendanceContainer() {
           style={[globalStyles.container, attendanceContainerStyles.container]}
           contentContainerStyle={attendanceContainerStyles.contentContainer}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isMapTouched} // Disable scrolling only when map is touched
         />
       );
   }
