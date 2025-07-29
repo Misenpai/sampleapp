@@ -2,7 +2,7 @@ import { CameraCapturedPicture } from "expo-camera";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 
-import uploadAttendanceData from "@/services/attendanceService";
+import { uploadAttendanceData } from "@/services/attendanceService";
 import getOrCreateUserId from "../services/UserId";
 import { AudioRecording, ViewMode } from "../types/attendance";
 

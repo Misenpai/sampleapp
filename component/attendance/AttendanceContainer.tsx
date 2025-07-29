@@ -37,16 +37,14 @@ export function AttendanceContainer() {
   const attendance = useAttendance();
   const camera = useCamera();
   const audio = useAudio();
-  const geofence = useGeofence(attendance.selectedLocationLabel);
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(
-    null
-  );
-
+  const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
   const [isMapTouched, setIsMapTouched] = useState(false);
 
+  // Move geofence hook to parent level
+  const geofence = useGeofence(selectedGeofenceId);
 
   const dropdownOptions = useMemo(() => {
     const opts = [{ id: "all", label: "Show All Departments" }];
@@ -61,7 +59,6 @@ export function AttendanceContainer() {
     );
   }, [selectedGeofenceId, dropdownOptions]);
 
-
   const handleDropdownSelect = (optionId: string) => {
     if (optionId === "all") {
       setSelectedGeofenceId(null);
@@ -74,11 +71,8 @@ export function AttendanceContainer() {
     setDropdownVisible(false);
   };
 
-
   const resolveAttendanceLocation = () => {
-
     if (attendance.selectedLocationLabel) {
-
       const fence = GEOFENCE_LOCATIONS.find(
         (g) => g.label === attendance.selectedLocationLabel
       );
@@ -99,7 +93,6 @@ export function AttendanceContainer() {
 
       return "IIT Guwahati";
     }
-
 
     for (const g of GEOFENCE_LOCATIONS) {
       if (!geofence.userPos) break;
@@ -122,7 +115,7 @@ export function AttendanceContainer() {
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
     if (!attendance.userId) {
-      attendance.handleUpload(); 
+      attendance.handleUpload();
       return;
     }
     attendance.setUploading(true);
@@ -147,7 +140,6 @@ export function AttendanceContainer() {
       attendance.setUploading(false);
     }
   };
-
 
   const renderDropdown = () => (
     <View style={dropdownStyles.container}>
@@ -208,11 +200,31 @@ export function AttendanceContainer() {
     </View>
   );
 
+  // Memoize the map component with geofence data
   const mapComponent = React.useMemo(
-    () => <GeofenceMap selectedGeofenceId={selectedGeofenceId} />,
-    [selectedGeofenceId]
+    () => (
+      <GeofenceMap
+        html={geofence.html}
+        userPos={geofence.userPos}
+        initialPos={geofence.initialPos}
+        isInitialized={geofence.isInitialized}
+        mapShapes={geofence.mapShapes}
+        mapLayers={geofence.mapLayers}
+        mapMarkers={geofence.mapMarkers}
+        mapCenter={geofence.mapCenter}
+      />
+    ),
+    [
+      geofence.html,
+      geofence.userPos,
+      geofence.initialPos,
+      geofence.isInitialized,
+      geofence.mapShapes,
+      geofence.mapLayers,
+      geofence.mapMarkers,
+      geofence.mapCenter,
+    ]
   );
-
 
   if (attendance.isLoadingUserId)
     return <LoadingScreen text="Loading user..." />;

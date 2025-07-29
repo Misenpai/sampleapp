@@ -1,6 +1,5 @@
-
 import axios from "axios";
-import getOrCreateUserId from "./UserId";
+
 
 interface Photo {
   uri: string;
@@ -11,6 +10,7 @@ interface AudioRecording {
 }
 
 interface AttendanceProps {
+  userId: string;
   photos: Photo[];
   audioRecording?: AudioRecording;
   location?: string | null;
@@ -19,12 +19,12 @@ interface AttendanceProps {
 const API_BASE = "http://10.150.11.35:4000/api";
 
 export const uploadAttendanceData = async ({
+  userId,
   photos,
   audioRecording,
   location,
 }: AttendanceProps) => {
   try {
-    const userId = await getOrCreateUserId();
     const ts = Date.now().toString();
 
     const form = new FormData();

@@ -10,7 +10,7 @@ interface MapCardProps {
   onMapTouchEnd?: () => void;
 }
 
-export function MapCard({
+export const MapCard = React.memo(function MapCard({
   onExpand,
   mapComponent,
   onMapTouchStart,
@@ -27,11 +27,10 @@ export function MapCard({
         >
           {mapComponent}
         </View>
-
         <Pressable onPress={onExpand} style={mapCardStyles.expandButton}>
           <FontAwesome6 name="expand" size={16} color="white" />
         </Pressable>
       </View>
     </View>
   );
-}
+});
