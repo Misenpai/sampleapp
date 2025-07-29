@@ -1,63 +1,62 @@
-import { db, storage } from "@/services/FirebaseConfig";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+
+import axios from "axios";
+import getOrCreateUserId from "./UserId";
 
 interface Photo {
   uri: string;
+  name?: string;
 }
 interface AudioRecording {
   uri: string;
 }
 
 interface AttendanceProps {
-  userId: string;
   photos: Photo[];
   audioRecording?: AudioRecording;
   location?: string | null;
 }
 
-const uploadAttendanceData = async ({
-  userId,
+const API_BASE = "http://10.150.11.35:4000/api";
+
+export const uploadAttendanceData = async ({
   photos,
   audioRecording,
   location,
-}: AttendanceProps): Promise<{ success: boolean; error?: string }> => {
+}: AttendanceProps) => {
   try {
-    const ts = Date.now();
-    const photoUrls: string[] = [];
+    const userId = await getOrCreateUserId();
+    const ts = Date.now().toString();
 
-    for (let i = 0; i < photos.length; i++) {
-      const res = await fetch(photos[i].uri);
-      const blob = await res.blob();
-      const photoRef = ref(
-        storage,
-        `attendance/${userId}/${ts}/photo_${i + 1}.jpg`
-      );
-      await uploadBytes(photoRef, blob);
-      photoUrls.push(await getDownloadURL(photoRef));
-    }
+    const form = new FormData();
 
-    let audioUrl: string | null = null;
-    if (audioRecording) {
-      const res = await fetch(audioRecording.uri);
-      const blob = await res.blob();
-      const audioRef = ref(storage, `attendance/${userId}/${ts}/audio_rec.m4a`);
-      await uploadBytes(audioRef, blob);
-      audioUrl = await getDownloadURL(audioRef);
-    }
+    form.append("userId", userId);
+    form.append("ts", ts);
+    if (location) form.append("location", location);
 
-    await addDoc(collection(db, "attendance"), {
-      userId,
-      photoUrls,
-      audioUrl,
-      location,
-      timestamp: Timestamp.now(),
-      createdAt: new Date().toISOString(),
+    photos.forEach((p, idx) => {
+      if (!p.uri) return;
+      form.append("photos", {
+        uri: p.uri,
+        type: "image/jpeg",
+        name: p.name || `photo_${idx}.jpg`,
+      } as any);
     });
 
-    return { success: true };
+    if (audioRecording?.uri) {
+      form.append("audio", {
+        uri: audioRecording.uri,
+        type: "audio/mp4",
+        name: "audio_rec.m4a",
+      } as any);
+    }
+
+    const { data } = await axios.post(`${API_BASE}/attendance`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    return { success: true, id: data.id };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: e.response?.data?.error || e.message };
   }
 };
 

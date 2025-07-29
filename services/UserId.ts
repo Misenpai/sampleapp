@@ -3,6 +3,7 @@ import uuid from "react-native-uuid";
 
 const STORAGE_KEY = "app_user_id";
 
+
 const getOrCreateUserId = async () => {
   let userId = await AsyncStorage.getItem(STORAGE_KEY);
   if (!userId) {

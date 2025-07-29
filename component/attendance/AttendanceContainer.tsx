@@ -47,7 +47,7 @@ export function AttendanceContainer() {
 
   const [isMapTouched, setIsMapTouched] = useState(false);
 
-  /* ---------- dropdown options ---------- */
+
   const dropdownOptions = useMemo(() => {
     const opts = [{ id: "all", label: "Show All Departments" }];
     GEOFENCE_LOCATIONS.forEach((g) => opts.push({ id: g.id, label: g.label }));
@@ -61,7 +61,7 @@ export function AttendanceContainer() {
     );
   }, [selectedGeofenceId, dropdownOptions]);
 
-  /* ---------- dropdown selection handler ---------- */
+
   const handleDropdownSelect = (optionId: string) => {
     if (optionId === "all") {
       setSelectedGeofenceId(null);
@@ -74,11 +74,11 @@ export function AttendanceContainer() {
     setDropdownVisible(false);
   };
 
-  /* ---------- NEW: resolve final location ---------- */
+
   const resolveAttendanceLocation = () => {
-    // 1. If user picked a specific department
+
     if (attendance.selectedLocationLabel) {
-      // check if user is inside that department
+
       const fence = GEOFENCE_LOCATIONS.find(
         (g) => g.label === attendance.selectedLocationLabel
       );
@@ -96,11 +96,11 @@ export function AttendanceContainer() {
         const inside = R * c <= fence.radius;
         if (inside) return attendance.selectedLocationLabel;
       }
-      // not inside that department → default
+
       return "IIT Guwahati";
     }
 
-    // 2. "Show All Departments" → auto-detect
+
     for (const g of GEOFENCE_LOCATIONS) {
       if (!geofence.userPos) break;
       const R = 6371000;
@@ -115,14 +115,14 @@ export function AttendanceContainer() {
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       if (R * c <= g.radius) return g.label;
     }
-    // fallback
+
     return "IIT Guwahati";
   };
 
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
     if (!attendance.userId) {
-      attendance.handleUpload(); // will show its own alert
+      attendance.handleUpload(); 
       return;
     }
     attendance.setUploading(true);
@@ -148,7 +148,7 @@ export function AttendanceContainer() {
     }
   };
 
-  /* ---------- dropdown render ---------- */
+
   const renderDropdown = () => (
     <View style={dropdownStyles.container}>
       <TouchableOpacity
@@ -213,7 +213,7 @@ export function AttendanceContainer() {
     [selectedGeofenceId]
   );
 
-  /* ---------- switch screens ---------- */
+
   if (attendance.isLoadingUserId)
     return <LoadingScreen text="Loading user..." />;
   if (!camera.permission?.granted)
@@ -330,7 +330,7 @@ export function AttendanceContainer() {
           style={[globalStyles.container, attendanceContainerStyles.container]}
           contentContainerStyle={attendanceContainerStyles.contentContainer}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={!isMapTouched} // Disable scrolling only when map is touched
+          scrollEnabled={!isMapTouched}
         />
       );
   }
