@@ -190,7 +190,7 @@ export const cameraStyles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 30,
   },
   controlSpacer: {

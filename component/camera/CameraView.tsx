@@ -7,7 +7,7 @@ import { cameraStyles } from "@/constants/style";
 import { CameraControls } from "./CameraControl";
 
 interface CameraViewProps {
-  camera: any; 
+  camera: any;
   currentPhotoIndex: number;
   retakeMode: boolean;
   totalPhotos: number;
@@ -52,10 +52,7 @@ export function CameraView({
           <FontAwesome6 name="arrow-left" size={24} color="white" />
         </Pressable>
 
-        <CameraControls
-          onTakePicture={handleTakePicture}
-          onToggleFacing={camera.toggleFacing}
-        />
+        <CameraControls onTakePicture={handleTakePicture} />
       </ExpoCameraView>
     </View>
   );

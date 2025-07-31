@@ -1,18 +1,12 @@
 import { cameraStyles } from "@/constants/style";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import React from "react";
 import { Pressable, View } from "react-native";
 
-
 interface CameraControlsProps {
   onTakePicture: () => void;
-  onToggleFacing: () => void;
 }
 
-export function CameraControls({
-  onTakePicture,
-  onToggleFacing,
-}: CameraControlsProps) {
+export function CameraControls({ onTakePicture }: CameraControlsProps) {
   return (
     <View style={cameraStyles.shutterContainer}>
       <View style={cameraStyles.controlSpacer} />
@@ -28,10 +22,6 @@ export function CameraControls({
             <View style={cameraStyles.shutterBtnInner} />
           </View>
         )}
-      </Pressable>
-
-      <Pressable onPress={onToggleFacing} style={cameraStyles.controlBtn}>
-        <FontAwesome6 name="rotate-left" size={32} color="white" />
       </Pressable>
     </View>
   );

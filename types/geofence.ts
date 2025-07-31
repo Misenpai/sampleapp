@@ -35,3 +35,18 @@ export interface MapMarker {
   size: [number, number];
   anchor: [number, number];
 }
+
+export interface Photo {
+  uri: string;
+  name?: string;
+}
+export interface AudioRecording {
+  uri: string;
+}
+
+export interface AttendanceProps {
+  userId: string;
+  photos: Photo[];
+  audioRecording?: AudioRecording;
+  location?: string | null;
+}

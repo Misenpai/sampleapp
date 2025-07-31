@@ -23,9 +23,6 @@ export function useCamera() {
     }
   };
 
-  const toggleFacing = () => {
-    setFacing((prev) => (prev === "back" ? "front" : "back"));
-  };
 
   return {
     permission,
@@ -33,6 +30,5 @@ export function useCamera() {
     facing,
     ref,
     takePicture,
-    toggleFacing,
   };
 }
