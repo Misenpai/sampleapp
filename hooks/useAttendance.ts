@@ -2,7 +2,6 @@ import { CameraCapturedPicture } from "expo-camera";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 
-import { uploadAttendanceData } from "@/services/attendanceService";
 import getOrCreateUserId from "../services/UserId";
 import { AudioRecording, ViewMode } from "../types/attendance";
 
@@ -38,39 +37,6 @@ export function useAttendance() {
     init();
   }, []);
 
-  const handleUpload = async () => {
-    if (!userId) {
-      Alert.alert("Error", "User ID not found");
-      return;
-    }
-    if (photos.length < TOTAL_PHOTOS) {
-      Alert.alert("Error", "Please take all 3 photos");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const result = await uploadAttendanceData({
-        userId,
-        photos,
-        audioRecording: audioRecording || undefined,
-        location: selectedLocationLabel,
-      });
-
-      if (result.success) {
-        Alert.alert("Success", "Attendance recorded!", [
-          { text: "OK", onPress: resetAll },
-        ]);
-      } else {
-        Alert.alert("Error", result.error ?? "Upload failed");
-      }
-    } catch {
-      Alert.alert("Error", "Upload error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const resetAll = () => {
     setPhotos([]);
     setAudioRecording(null);
@@ -97,7 +63,6 @@ export function useAttendance() {
     setCurrentPhotoIndex,
     setRetakeMode,
     setSelectedLocationLabel,
-    handleUpload,
     resetAll,
     setUploading,
   };

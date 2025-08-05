@@ -1,7 +1,7 @@
 import { AttendanceProps } from "@/types/geofence";
 import axios from "axios";
 
-const API_BASE = "http://10.150.11.3:4000/api";
+const API_BASE = "http://10.150.11.131:3000/api";
 
 export const uploadAttendanceData = async ({
   userId,

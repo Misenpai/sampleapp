@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   ListRenderItem,
   Modal,
@@ -112,34 +113,33 @@ export function AttendanceContainer() {
     return "IIT Guwahati";
   };
 
-  const handleUpload = async () => {
-    const finalLocation = resolveAttendanceLocation();
-    if (!attendance.userId) {
-      attendance.handleUpload();
-      return;
-    }
-    attendance.setUploading(true);
-    try {
-      const result = await import("@/services/attendanceService").then((m) =>
-        m.default({
-          userId: attendance.userId!,
-          photos: attendance.photos,
-          audioRecording: attendance.audioRecording || undefined,
-          location: finalLocation,
-        })
-      );
+const handleUpload = async () => {
+  const finalLocation = resolveAttendanceLocation();
+  if (!attendance.userId) return;
 
-      if (result.success) {
-        attendance.resetAll();
-      } else {
-        alert(result.error ?? "Upload failed");
-      }
-    } catch {
-      alert("Upload error");
-    } finally {
-      attendance.setUploading(false);
+  attendance.setUploading(true);
+  try {
+    const { default: upload } = await import("@/services/attendanceService");
+    const result = await upload({
+      userId: attendance.userId,
+      photos: attendance.photos,
+      audioRecording: attendance.audioRecording || undefined,
+      location: finalLocation,
+    });
+
+    if (result.success) {
+      Alert.alert("Success", "Attendance recorded!", [
+        { text: "OK", onPress: attendance.resetAll },
+      ]);
+    } else {
+      Alert.alert("Error", result.error ?? "Upload failed");
     }
-  };
+  } catch {
+    Alert.alert("Error", "Upload error");
+  } finally {
+    attendance.setUploading(false);
+  }
+};
 
   const renderDropdown = () => (
     <View style={dropdownStyles.container}>
