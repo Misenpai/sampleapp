@@ -1,6 +1,7 @@
+// app/(auth)/login.tsx
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -9,10 +10,29 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Alert,
 } from "react-native";
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, isLoading } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async () => {
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
+    
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+
+    await signIn(name.trim());
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -21,20 +41,37 @@ export default function LoginScreen() {
       <Text style={styles.title}>Login</Text>
       <TextInput
         style={styles.input}
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="words"
+      />
+      <TextInput
+        style={styles.input}
         placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
       <TextInput
         style={styles.input}
         placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
         secureTextEntry
       />
-      <TouchableOpacity style={styles.button} onPress={signIn}>
-        <Text style={styles.buttonText}>Login</Text>
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.buttonDisabled]} 
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {isLoading ? "Logging in..." : "Login"}
+        </Text>
       </TouchableOpacity>
       <View style={styles.signupContainer}>
-        <Text>Dont have an account? </Text>
+        <Text>Don't have an account? </Text>
         <Link href="/(auth)/signup" asChild>
           <TouchableOpacity>
             <Text style={styles.signupText}>Sign up</Text>
@@ -75,6 +112,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 10,
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: "#ccc",
   },
   buttonText: {
     color: "#fff",
