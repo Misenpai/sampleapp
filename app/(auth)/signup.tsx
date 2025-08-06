@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 export default function SignupScreen() {
-  const { signIn, isLoading } = useAuth();
+  const { signUp, isLoading } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +30,12 @@ export default function SignupScreen() {
       return;
     }
 
-    await signIn(name.trim());
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long");
+      return;
+    }
+
+    await signUp(name.trim(), email.trim().toLowerCase(), password);
   };
 
   return (
@@ -45,6 +50,7 @@ export default function SignupScreen() {
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
+        autoCorrect={false}
       />
       <TextInput
         style={styles.input}
@@ -53,10 +59,11 @@ export default function SignupScreen() {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
       />
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder="Password (min 6 characters)"
         value={password}
         onChangeText={setPassword}
         secureTextEntry

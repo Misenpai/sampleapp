@@ -3,34 +3,28 @@ import { useAuth } from "@/context/AuthContext";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    Alert,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function LoginScreen() {
   const { signIn, isLoading } = useAuth();
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!name.trim()) {
-      Alert.alert("Error", "Please enter your name");
-      return;
-    }
-    
     if (!email.trim() || !password.trim()) {
       Alert.alert("Error", "Please enter email and password");
       return;
     }
 
-    await signIn(name.trim());
+    await signIn(email.trim().toLowerCase(), password);
   };
 
   return (
@@ -41,18 +35,12 @@ export default function LoginScreen() {
       <Text style={styles.title}>Login</Text>
       <TextInput
         style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="words"
-      />
-      <TextInput
-        style={styles.input}
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
       />
       <TextInput
         style={styles.input}

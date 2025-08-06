@@ -119,8 +119,9 @@ const handleUpload = async () => {
 
   attendance.setUploading(true);
   try {
-    const { default: upload } = await import("@/services/attendanceService");
-    const result = await upload({
+    // Use named import instead of default
+    const { uploadAttendanceData } = await import("@/services/attendanceService");
+    const result = await uploadAttendanceData({
       userId: attendance.userId,
       photos: attendance.photos,
       audioRecording: attendance.audioRecording || undefined,

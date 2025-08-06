@@ -1,7 +1,8 @@
+// services/attendanceService.ts
 import { AttendanceProps } from "@/types/geofence";
 import axios from "axios";
 
-const API_BASE = "http://10.150.11.131:3000/api";
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export const uploadAttendanceData = async ({
   userId,
@@ -10,12 +11,17 @@ export const uploadAttendanceData = async ({
   location,
 }: AttendanceProps) => {
   try {
-    const ts = Date.now().toString();
+    if (!userId){
+      return { success: false, error: "User not logged in" }
+    }
 
     const form = new FormData();
-
-    form.append("userId", userId);
-    form.append("ts", ts);
+    
+    // Create a single timestamp for this upload session
+    const uploadTimestamp = Date.now();
+    
+    form.append("username", userId);
+    form.append("timestamp", uploadTimestamp.toString()); // Add timestamp
     if (location) form.append("location", location);
 
     photos.forEach((p, idx) => {
@@ -44,5 +50,3 @@ export const uploadAttendanceData = async ({
     return { success: false, error: e.response?.data?.error || e.message };
   }
 };
-
-export default uploadAttendanceData;

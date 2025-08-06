@@ -27,6 +27,7 @@ export function useAttendance() {
       try {
         const id = await getOrCreateUserId();
         if (!id) throw new Error("User ID null");
+        console.log(id);
         setUserId(id);
       } catch {
         Alert.alert("Error", "Failed to initialize user ID");
