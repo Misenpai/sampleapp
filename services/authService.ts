@@ -1,14 +1,13 @@
-// services/authService.ts
+
 import axios from "axios";
 
-// Make sure this matches your backend server exactly
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE; // Update this to your actual backend IP/port
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export interface AuthResponse {
   success: boolean;
   user?: {
     id: string;
-    name: string;
+    username: string;
     email: string;
     createdAt?: string;
     updatedAt?: string;
@@ -17,7 +16,6 @@ export interface AuthResponse {
   message?: string;
 }
 
-// Add timeout and better error handling
 const apiClient = axios.create({
   baseURL: API_BASE,
   timeout: 10000, // 10 seconds timeout
@@ -26,12 +24,13 @@ const apiClient = axios.create({
   }
 });
 
-export const signupUser = async (name: string, email: string, password: string): Promise<AuthResponse> => {
+export const signupUser = async (empId: string, username: string, email: string, password: string): Promise<AuthResponse> => {
   try {
-    console.log('Attempting signup with:', { name, email, apiBase: API_BASE });
+    console.log('Attempting signup with:', { empId, username, email, apiBase: API_BASE });
     
     const { data } = await apiClient.post('/signup', {
-      name: name.trim(),
+      empId: empId.trim(),
+      username: username.trim(),
       email: email.toLowerCase().trim(),
       password
     });
@@ -67,12 +66,12 @@ export const signupUser = async (name: string, email: string, password: string):
   }
 };
 
-export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
+export const loginUser = async (username: string, password: string): Promise<AuthResponse> => {
   try {
-    console.log('Attempting login with:', { email, apiBase: API_BASE });
+    console.log('Attempting login with:', { username, apiBase: API_BASE });
     
     const { data } = await apiClient.post('/login', {
-      email: email.toLowerCase().trim(),
+      username: username.trim(),
       password
     });
 
@@ -104,17 +103,5 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
       success: false,
       error: error.response?.data?.error || error.message || "Login failed"
     };
-  }
-};
-
-// Test function to check if backend is reachable
-export const testConnection = async (): Promise<boolean> => {
-  try {
-    const response = await apiClient.get('/test', { timeout: 5000 });
-    console.log('Connection test successful');
-    return true;
-  } catch (error) {
-    console.error('Connection test failed:', error);
-    return false;
   }
 };

@@ -238,7 +238,6 @@ const handleUpload = async () => {
       <ExpandedMapView
         onClose={() => setShowExpandedMap(false)}
         mapComponent={mapComponent}
-        dropdownComponent={renderDropdown()}
       />
     );
 

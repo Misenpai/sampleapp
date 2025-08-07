@@ -1,5 +1,4 @@
-// context/AuthContext.tsx
-import { loginUser, signupUser, testConnection } from "../services/authService";
+import { loginUser, signupUser } from "../services/authService";
 import { clearUserData, getUserData, storeUserData } from "../services/UserId";
 import { router, useRootNavigationState, useSegments } from "expo-router";
 import React, {
@@ -12,10 +11,9 @@ import React, {
 import { Alert } from "react-native";
 
 type AuthType = {
-  signIn: (email: string, password: string, name?: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signIn: (username: string, password: string) => Promise<void>;
+  signUp: (empId: string, name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  testConnection: () => Promise<void>;
   session?: string | null;
   isLoading: boolean;
   userName?: string | null;
@@ -26,7 +24,6 @@ const AuthContext = createContext<AuthType>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
-  testConnection: async () => {},
   session: null,
   isLoading: true,
   userName: null,
@@ -60,7 +57,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on app start
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
@@ -85,24 +81,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   return (
     <AuthContext.Provider
       value={{
-        signIn: async (email: string, password: string) => {
+        signIn: async (username: string, password: string) => {
           setIsLoading(true);
           try {
             console.log('Starting sign in process...');
-            const result = await loginUser(email, password);
+            const result = await loginUser(username, password);
             console.log('Login result:', result);
             
             if (result.success && result.user) {
               const userData = {
                 userId: result.user.id,
-                name: result.user.name,
+                name: result.user.username,
                 email: result.user.email,
                 isLoggedIn: true
               };
               
               await storeUserData(userData);
               setSession(result.user.id);
-              setUserName(result.user.name);
+              setUserName(result.user.username);
               setUserId(result.user.id);
               
               Alert.alert("Success", "Logged in successfully!");
@@ -116,24 +112,24 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setIsLoading(false);
           }
         },
-        signUp: async (name: string, email: string, password: string) => {
+        signUp: async (empId: string, name: string, email: string, password: string) => {
           setIsLoading(true);
           try {
             console.log('Starting sign up process...');
-            const result = await signupUser(name, email, password);
+            const result = await signupUser(empId, name, email, password);
             console.log('Signup result:', result);
             
             if (result.success && result.user) {
               const userData = {
                 userId: result.user.id,
-                name: result.user.name,
+                name: result.user.username,
                 email: result.user.email,
                 isLoggedIn: true
               };
               
               await storeUserData(userData);
               setSession(result.user.id);
-              setUserName(result.user.name);
+              setUserName(result.user.username);
               setUserId(result.user.id);
               
               Alert.alert("Success", "Account created successfully!");
@@ -145,17 +141,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             Alert.alert("Error", "An unexpected error occurred during signup");
           } finally {
             setIsLoading(false);
-          }
-        },
-        testConnection: async () => {
-          try {
-            const isConnected = await testConnection();
-            Alert.alert(
-              "Connection Test", 
-              isConnected ? "✅ Backend server is reachable!" : "❌ Cannot reach backend server"
-            );
-          } catch (error) {
-            Alert.alert("Connection Test", "❌ Connection test failed");
           }
         },
         signOut: async () => {

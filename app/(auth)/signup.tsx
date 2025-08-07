@@ -1,4 +1,3 @@
-// app/(auth)/signup.tsx
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "expo-router";
 import React, { useState } from "react";
@@ -15,27 +14,39 @@ import {
 
 export default function SignupScreen() {
   const { signUp, isLoading } = useAuth();
-  const [name, setName] = useState("");
+  const [empId, setEmpId] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleSignup = async () => {
-    if (!name.trim()) {
+    if (!empId.trim()) {
+      Alert.alert("Error", "Please enter your employee ID");
+      return;
+    }
+    if (!username.trim()) {
       Alert.alert("Error", "Please enter your name");
       return;
     }
-    
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter email and password");
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email");
       return;
     }
-
+    if (!password.trim()) {
+      Alert.alert("Error", "Please enter your password");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters long");
       return;
     }
 
-    await signUp(name.trim(), email.trim().toLowerCase(), password);
+    await signUp(empId.trim(), username.trim(), email.trim().toLowerCase(), password);
   };
 
   return (
@@ -44,11 +55,19 @@ export default function SignupScreen() {
       style={styles.container}
     >
       <Text style={styles.title}>Sign Up</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Name" 
-        value={name}
-        onChangeText={setName}
+      <TextInput
+        style={styles.input}
+        placeholder="Employee ID"
+        value={empId}
+        onChangeText={setEmpId}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Name"
+        value={username}
+        onChangeText={setUsername}
         autoCapitalize="words"
         autoCorrect={false}
       />
@@ -68,8 +87,15 @@ export default function SignupScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <TouchableOpacity 
-        style={[styles.button, isLoading && styles.buttonDisabled]} 
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
+      <TouchableOpacity
+        style={[styles.button, isLoading && styles.buttonDisabled]}
         onPress={handleSignup}
         disabled={isLoading}
       >

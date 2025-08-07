@@ -1,4 +1,4 @@
-// app/(auth)/login.tsx
+
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "expo-router";
 import React, { useState } from "react";
@@ -15,16 +15,16 @@ import {
 
 export default function LoginScreen() {
   const { signIn, isLoading } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    if (!username.trim() || !password.trim()) {
       Alert.alert("Error", "Please enter email and password");
       return;
     }
 
-    await signIn(email.trim().toLowerCase(), password);
+    await signIn(username.trim().toLowerCase(), password);
   };
 
   return (
@@ -35,10 +35,9 @@ export default function LoginScreen() {
       <Text style={styles.title}>Login</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -59,7 +58,7 @@ export default function LoginScreen() {
         </Text>
       </TouchableOpacity>
       <View style={styles.signupContainer}>
-        <Text>Don't have an account? </Text>
+        <Text>Don&apos;t have an account? </Text>
         <Link href="/(auth)/signup" asChild>
           <TouchableOpacity>
             <Text style={styles.signupText}>Sign up</Text>
