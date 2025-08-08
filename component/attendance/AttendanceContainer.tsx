@@ -3,10 +3,6 @@ import {
   Alert,
   FlatList,
   ListRenderItem,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -18,11 +14,9 @@ import { useGeofence } from "@/hooks/useGeofence";
 import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
 import {
   attendanceContainerStyles,
-  dropdownStyles,
   globalStyles,
 } from "@/constants/style";
 
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { AudioRecorder } from "../audio/AudioRecorder";
 import { CameraView } from "../camera/CameraView";
 import { ExpandedMapView } from "../map/ExpandedMapView";
@@ -31,6 +25,7 @@ import { MapCard } from "../map/MapCard";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { PermissionScreen } from "../ui/PermissionScreen";
 import { HomeView } from "./HomeView";
+import { LocationDropdown } from "./LocationDropdown";
 
 type ListItem = { id: string; type: "dropdown" | "map" | "attendance" };
 
@@ -40,36 +35,15 @@ export function AttendanceContainer() {
   const audio = useAudio();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
   const [isMapTouched, setIsMapTouched] = useState(false);
 
   // Move geofence hook to parent level
   const geofence = useGeofence(selectedGeofenceId);
 
-  const dropdownOptions = useMemo(() => {
-    const opts = [{ id: "all", label: "Show All Departments" }];
-    GEOFENCE_LOCATIONS.forEach((g) => opts.push({ id: g.id, label: g.label }));
-    return opts;
-  }, []);
-
-  const selectedOptionLabel = useMemo(() => {
-    if (!selectedGeofenceId) return "Show All Departments";
-    return (
-      dropdownOptions.find((o) => o.id === selectedGeofenceId)?.label ?? ""
-    );
-  }, [selectedGeofenceId, dropdownOptions]);
-
-  const handleDropdownSelect = (optionId: string) => {
-    if (optionId === "all") {
-      setSelectedGeofenceId(null);
-      attendance.setSelectedLocationLabel(null);
-    } else {
-      const option = dropdownOptions.find((o) => o.id === optionId)!;
-      setSelectedGeofenceId(option.id);
-      attendance.setSelectedLocationLabel(option.label);
-    }
-    setDropdownVisible(false);
+  const handleLocationSelection = (geofenceId: string | null, label: string | null) => {
+    setSelectedGeofenceId(geofenceId);
+    attendance.setSelectedLocationLabel(label);
   };
 
   const resolveAttendanceLocation = () => {
@@ -113,93 +87,33 @@ export function AttendanceContainer() {
     return "IIT Guwahati";
   };
 
-const handleUpload = async () => {
-  const finalLocation = resolveAttendanceLocation();
-  if (!attendance.userId) return;
+  const handleUpload = async () => {
+    const finalLocation = resolveAttendanceLocation();
+    if (!attendance.userId) return;
 
-  attendance.setUploading(true);
-  try {
-    // Use named import instead of default
-    const { uploadAttendanceData } = await import("@/services/attendanceService");
-    const result = await uploadAttendanceData({
-      userId: attendance.userId,
-      photos: attendance.photos,
-      audioRecording: attendance.audioRecording || undefined,
-      location: finalLocation,
-    });
+    attendance.setUploading(true);
+    try {
+      const { uploadAttendanceData } = await import("@/services/attendanceService");
+      const result = await uploadAttendanceData({
+        userId: attendance.userId,
+        photos: attendance.photos,
+        audioRecording: attendance.audioRecording || undefined,
+        location: finalLocation,
+      });
 
-    if (result.success) {
-      Alert.alert("Success", "Attendance recorded!", [
-        { text: "OK", onPress: attendance.resetAll },
-      ]);
-    } else {
-      Alert.alert("Error", result.error ?? "Upload failed");
+      if (result.success) {
+        Alert.alert("Success", "Attendance recorded!", [
+          { text: "OK", onPress: attendance.resetAll },
+        ]);
+      } else {
+        Alert.alert("Error", result.error ?? "Upload failed");
+      }
+    } catch {
+      Alert.alert("Error", "Upload error");
+    } finally {
+      attendance.setUploading(false);
     }
-  } catch {
-    Alert.alert("Error", "Upload error");
-  } finally {
-    attendance.setUploading(false);
-  }
-};
-
-  const renderDropdown = () => (
-    <View style={dropdownStyles.container}>
-      <TouchableOpacity
-        style={dropdownStyles.selector}
-        onPress={() => setDropdownVisible(true)}
-      >
-        <Text style={dropdownStyles.selectorText} numberOfLines={1}>
-          {selectedOptionLabel}
-        </Text>
-        <FontAwesome6
-          name={dropdownVisible ? "chevron-up" : "chevron-down"}
-          size={14}
-          color="#666"
-        />
-      </TouchableOpacity>
-
-      <Modal
-        visible={dropdownVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDropdownVisible(false)}
-      >
-        <TouchableOpacity
-          style={dropdownStyles.modalOverlay}
-          onPress={() => setDropdownVisible(false)}
-        >
-          <View style={dropdownStyles.dropdownMenu}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {dropdownOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={[
-                    dropdownStyles.option,
-                    selectedGeofenceId === opt.id &&
-                      dropdownStyles.selectedOption,
-                  ]}
-                  onPress={() => handleDropdownSelect(opt.id)}
-                >
-                  <Text
-                    style={[
-                      dropdownStyles.optionText,
-                      selectedGeofenceId === opt.id &&
-                        dropdownStyles.selectedOptionText,
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                  {selectedGeofenceId === opt.id && (
-                    <FontAwesome6 name="check" size={14} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
+  };
 
   // Memoize the map component with geofence data
   const mapComponent = React.useMemo(
@@ -269,8 +183,7 @@ const handleUpload = async () => {
               attendance.setCurrentView("home");
               attendance.setRetakeMode(false);
             } else if (
-              attendance.currentPhotoIndex <
-              attendance.TOTAL_PHOTOS - 1
+              attendance.currentPhotoIndex < attendance.TOTAL_PHOTOS - 1
             ) {
               attendance.setCurrentPhotoIndex(attendance.currentPhotoIndex + 1);
             } else {
@@ -293,7 +206,12 @@ const handleUpload = async () => {
       const renderItem: ListRenderItem<ListItem> = ({ item }) => {
         switch (item.type) {
           case "dropdown":
-            return renderDropdown();
+            return (
+              <LocationDropdown
+                selectedGeofenceId={selectedGeofenceId}
+                onSelectionChange={handleLocationSelection}
+              />
+            );
           case "map":
             return (
               <MapCard
