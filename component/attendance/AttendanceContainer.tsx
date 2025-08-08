@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -26,30 +26,40 @@ import { LoadingScreen } from "../ui/LoadingScreen";
 import { PermissionScreen } from "../ui/PermissionScreen";
 import { HomeView } from "./HomeView";
 import { LocationDropdown } from "./LocationDropdown";
+import { useLocationContext } from "@/context/LocationContenxt";
+import { useLocationStore } from "../../store/locationStore";
 
 type ListItem = { id: string; type: "dropdown" | "map" | "attendance" };
 
 export function AttendanceContainer() {
-  const attendance = useAttendance();
+    const attendance = useAttendance();
   const camera = useCamera();
   const audio = useAudio();
+   const { 
+    selectedGeofenceId, 
+    selectedLocationLabel, 
+    setSelectedLocation 
+  } = useLocationStore();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
-  const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
   const [isMapTouched, setIsMapTouched] = useState(false);
 
   // Move geofence hook to parent level
   const geofence = useGeofence(selectedGeofenceId);
 
+  // Sync store state with attendance state
+  useEffect(() => {
+    attendance.setSelectedLocationLabel(selectedLocationLabel);
+  }, [selectedLocationLabel]);
+
   const handleLocationSelection = (geofenceId: string | null, label: string | null) => {
-    setSelectedGeofenceId(geofenceId);
-    attendance.setSelectedLocationLabel(label);
+    setSelectedLocation(geofenceId, label);
   };
 
   const resolveAttendanceLocation = () => {
-    if (attendance.selectedLocationLabel) {
+    if (selectedLocationLabel) {
       const fence = GEOFENCE_LOCATIONS.find(
-        (g) => g.label === attendance.selectedLocationLabel
+        (g) => g.label === selectedLocationLabel
       );
       if (fence && geofence.userPos) {
         const R = 6371000;
@@ -63,7 +73,7 @@ export function AttendanceContainer() {
             Math.sin(dLng / 2) ** 2;
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const inside = R * c <= fence.radius;
-        if (inside) return attendance.selectedLocationLabel;
+        if (inside) return selectedLocationLabel;
       }
 
       return "IIT Guwahati";
@@ -244,7 +254,7 @@ export function AttendanceContainer() {
                 onUpload={handleUpload}
                 uploading={attendance.uploading}
                 totalPhotos={attendance.TOTAL_PHOTOS}
-                selectedLocationLabel={attendance.selectedLocationLabel}
+                selectedLocationLabel={selectedLocationLabel}
               />
             );
           default:

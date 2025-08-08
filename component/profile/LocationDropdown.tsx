@@ -10,6 +10,7 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { GEOFENCE_LOCATIONS } from '@/constants/geofenceLocation';
 import { dropdownStyles } from '@/constants/style';
+import { useLocationStore } from '../../store/locationStore'; // Import Zustand store
 
 interface LocationDropdownProps {
   selectedLocation: string;
@@ -23,6 +24,7 @@ export const LocationDropdown: React.FC<LocationDropdownProps> = ({
   updating,
 }) => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const { setLocationByLabel } = useLocationStore(); // Use Zustand store
 
   const dropdownOptions = [
     { id: 'all', label: 'Show All Departments', value: 'all' },
@@ -42,7 +44,11 @@ export const LocationDropdown: React.FC<LocationDropdownProps> = ({
     
     if (optionValue === selectedLocation) return;
 
+    // Update profile location
     onLocationChange(optionValue);
+
+    // Update the global location store (this will affect the map in AttendanceContainer)
+    setLocationByLabel(optionValue);
   };
 
   return (
