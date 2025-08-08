@@ -6,7 +6,7 @@ import { audioRecorderStyles } from '@/constants/style';
 
 
 interface AudioRecorderProps {
-  audio: any; // Use the audio hook type
+  audio: any;
   onBack: () => void;
   onRecordingComplete: (recording: AudioRecording) => void;
 }

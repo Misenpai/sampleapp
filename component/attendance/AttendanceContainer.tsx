@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
-  ListRenderItem,
-  View,
+  ListRenderItem
 } from "react-native";
 
 import { useAttendance } from "@/hooks/useAttendance";
@@ -17,6 +16,7 @@ import {
   globalStyles,
 } from "@/constants/style";
 
+import { useLocationStore } from "../../store/locationStore";
 import { AudioRecorder } from "../audio/AudioRecorder";
 import { CameraView } from "../camera/CameraView";
 import { ExpandedMapView } from "../map/ExpandedMapView";
@@ -25,36 +25,28 @@ import { MapCard } from "../map/MapCard";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { PermissionScreen } from "../ui/PermissionScreen";
 import { HomeView } from "./HomeView";
-import { LocationDropdown } from "./LocationDropdown";
-import { useLocationContext } from "@/context/LocationContenxt";
-import { useLocationStore } from "../../store/locationStore";
 
-type ListItem = { id: string; type: "dropdown" | "map" | "attendance" };
+type ListItem = { id: string; type: "map" | "attendance" };
 
 export function AttendanceContainer() {
-    const attendance = useAttendance();
+  const attendance = useAttendance();
   const camera = useCamera();
   const audio = useAudio();
-   const { 
+  const { 
     selectedGeofenceId, 
     selectedLocationLabel, 
-    setSelectedLocation 
   } = useLocationStore();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [isMapTouched, setIsMapTouched] = useState(false);
-
-  // Move geofence hook to parent level
   const geofence = useGeofence(selectedGeofenceId);
 
-  // Sync store state with attendance state
-  useEffect(() => {
-    attendance.setSelectedLocationLabel(selectedLocationLabel);
-  }, [selectedLocationLabel]);
+ useEffect(() => {
+    if (selectedLocationLabel && selectedGeofenceId) {
+      attendance.setSelectedLocationLabel(selectedLocationLabel);
+    }
+  }, [selectedLocationLabel, selectedGeofenceId]);
 
-  const handleLocationSelection = (geofenceId: string | null, label: string | null) => {
-    setSelectedLocation(geofenceId, label);
-  };
 
   const resolveAttendanceLocation = () => {
     if (selectedLocationLabel) {
@@ -125,7 +117,6 @@ export function AttendanceContainer() {
     }
   };
 
-  // Memoize the map component with geofence data
   const mapComponent = React.useMemo(
     () => (
       <GeofenceMap
@@ -208,20 +199,12 @@ export function AttendanceContainer() {
       );
     default:
       const data: ListItem[] = [
-        { id: "dropdown", type: "dropdown" },
         { id: "map", type: "map" },
         { id: "attendance", type: "attendance" },
       ];
 
       const renderItem: ListRenderItem<ListItem> = ({ item }) => {
         switch (item.type) {
-          case "dropdown":
-            return (
-              <LocationDropdown
-                selectedGeofenceId={selectedGeofenceId}
-                onSelectionChange={handleLocationSelection}
-              />
-            );
           case "map":
             return (
               <MapCard

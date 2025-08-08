@@ -18,7 +18,6 @@ export const ProfileContainer: React.FC = () => {
   const handleLocationChange = async (newLocation: string) => {
     const success = await updateLocation(newLocation);
     if (!success) {
-      // Revert selection on error
       setSelectedLocation(profile?.location || 'all');
     } else {
       setSelectedLocation(newLocation);

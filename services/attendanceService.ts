@@ -1,4 +1,4 @@
-// services/attendanceService.ts
+
 import { AttendanceProps } from "@/types/geofence";
 import axios from "axios";
 
@@ -16,12 +16,11 @@ export const uploadAttendanceData = async ({
     }
 
     const form = new FormData();
-    
-    // Create a single timestamp for this upload session
+
     const uploadTimestamp = Date.now();
     
     form.append("username", userId);
-    form.append("timestamp", uploadTimestamp.toString()); // Add timestamp
+    form.append("timestamp", uploadTimestamp.toString());
     if (location) form.append("location", location);
 
     photos.forEach((p, idx) => {

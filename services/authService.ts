@@ -18,7 +18,7 @@ export interface AuthResponse {
 
 const apiClient = axios.create({
   baseURL: API_BASE,
-  timeout: 10000, // 10 seconds timeout
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   }

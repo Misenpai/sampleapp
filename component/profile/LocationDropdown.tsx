@@ -10,7 +10,7 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { GEOFENCE_LOCATIONS } from '@/constants/geofenceLocation';
 import { dropdownStyles } from '@/constants/style';
-import { useLocationStore } from '../../store/locationStore'; // Import Zustand store
+import { useLocationStore } from '../../store/locationStore';
 
 interface LocationDropdownProps {
   selectedLocation: string;
@@ -24,33 +24,26 @@ export const LocationDropdown: React.FC<LocationDropdownProps> = ({
   updating,
 }) => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const { setLocationByLabel } = useLocationStore(); // Use Zustand store
+  const { setLocationByLabel } = useLocationStore();
 
-  const dropdownOptions = [
-    { id: 'all', label: 'Show All Departments', value: 'all' },
-    ...GEOFENCE_LOCATIONS.map(location => ({
-      id: location.id,
-      label: location.label,
-      value: location.label,
-    }))
-  ];
+  const dropdownOptions = GEOFENCE_LOCATIONS.map(location => ({
+    id: location.id,
+    label: location.label,
+    value: location.label,
+  }));
 
   const selectedOptionLabel = 
     dropdownOptions.find(option => option.value === selectedLocation)?.label || 
-    'Show All Departments';
+    'Select Department';
 
   const handleLocationSelect = (optionValue: string) => {
     setDropdownVisible(false);
     
     if (optionValue === selectedLocation) return;
 
-    // Update profile location
     onLocationChange(optionValue);
-
-    // Update the global location store (this will affect the map in AttendanceContainer)
     setLocationByLabel(optionValue);
   };
-
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Department</Text>

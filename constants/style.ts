@@ -394,7 +394,7 @@ export const expandedMapStyles = StyleSheet.create({
   },
   dropdownContainer: {
     position: "absolute",
-    bottom: 20, // <-- moved to bottom
+    bottom: 20,
     left: 0,
     right: 0,
     zIndex: 1001,

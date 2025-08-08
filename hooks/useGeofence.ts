@@ -14,10 +14,9 @@ export function useGeofence(selectedGeofenceId?: string | null) {
   const [currentLocation, setCurrentLocation] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Filter geofence locations based on selected ID
   const filteredGeofenceLocations = useMemo(() => {
     if (!selectedGeofenceId) {
-      return GEOFENCE_LOCATIONS; // Show all when no filter is applied
+      return GEOFENCE_LOCATIONS;
     }
     return GEOFENCE_LOCATIONS.filter(
       (location) => location.id === selectedGeofenceId
@@ -26,7 +25,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
 
   const haversine = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const R = 6371e3; // metres
+      const R = 6371e3;
       const toRad = (deg: number) => (deg * Math.PI) / 180;
       const φ1 = toRad(lat1);
       const φ2 = toRad(lat2);
@@ -43,7 +42,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
 
   const checkGeofences = useCallback(
     (position: LatLng) => {
-      // Always check against all geofences for location detection, not just filtered ones
+     
       for (const geofence of GEOFENCE_LOCATIONS) {
         const distance = haversine(
           position.lat,
@@ -61,7 +60,6 @@ export function useGeofence(selectedGeofenceId?: string | null) {
     [haversine]
   );
 
-  // Map shapes based on filtered locations
   const mapShapes = useMemo(
     (): MapShape[] =>
       filteredGeofenceLocations.map((geofence, index) => ({
@@ -88,7 +86,6 @@ export function useGeofence(selectedGeofenceId?: string | null) {
     []
   );
 
-  // Static label markers based on filtered locations
   const staticLabelMarkers = useMemo(
     (): MapMarker[] =>
       filteredGeofenceLocations.map((g, idx) => {
@@ -266,7 +263,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
     mapShapes,
     mapLayers,
     mapMarkers,
-    mapCenter: mapCenter || initialPos, // Use calculated center or fallback to initial position
+    mapCenter: mapCenter || initialPos,
     filteredGeofenceLocations,
   };
 }

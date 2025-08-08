@@ -11,8 +11,8 @@ export const GEOFENCE_LOCATIONS: GeofenceLocation[] = [
     radius: 5,
   },
   {
-    id: "somewhere-else",
-    label: "Somewhere Else",
+    id: "office-1",
+    label: "office-1",
     center: {
       lat: 26.18487200093455,
       lng: 91.68924480966525,
