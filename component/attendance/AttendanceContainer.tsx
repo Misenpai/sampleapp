@@ -101,9 +101,13 @@ export function AttendanceContainer() {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const inside = R * c <= fence.radius;
         if (inside) return selectedLocationLabel;
+
+        // If outside the selected location
+        return `Outside (${selectedLocationLabel})`;
       }
 
-      return "IIT Guwahati";
+      // If we can't determine, default to outside selected location
+      return `Outside (${selectedLocationLabel})`;
     }
 
     for (const g of GEOFENCE_LOCATIONS) {
@@ -121,10 +125,9 @@ export function AttendanceContainer() {
       if (R * c <= g.radius) return g.label;
     }
 
-    return "IIT Guwahati";
+    return "Outside (Unknown Location)";
   };
 
-  // In AttendanceContainer.tsx - Update the handleUpload function
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
     if (!userId) return;
