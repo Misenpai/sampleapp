@@ -62,11 +62,11 @@ export function AttendanceContainer() {
   const geofence = useGeofence(selectedGeofenceId);
 
   // Initialize user ID on mount
-  useEffect(() => {
-    if (isLoadingUserId && !userId) {
-      initializeUserId();
-    }
-  }, []);
+useEffect(() => {
+  if (isLoadingUserId && !userId) {
+    initializeUserId();
+  }
+}, [isLoadingUserId, userId, initializeUserId]);
 
   // Use useCallback to memoize the function
   const updateSelectedLocationLabel = useCallback((label: string) => {

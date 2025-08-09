@@ -4,7 +4,7 @@ import { colors } from "./colors";
 export const globalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.background.primary,
   },
 });
 
@@ -44,7 +44,7 @@ export const photoGridStyles = StyleSheet.create({
   photoNumber: {
     fontSize: 18,
     fontWeight: "bold",
-    color: colors.primary,
+    color: colors.primary[500],
     marginBottom: 10,
   },
   photoWrapper: {
@@ -71,7 +71,7 @@ export const photoGridStyles = StyleSheet.create({
     position: "absolute",
     bottom: -25,
     alignSelf: "center",
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background.secondary,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -91,7 +91,7 @@ export const audioStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: colors.gray.dark,
+    color: colors.gray.dark, // This is fine - using the legacy value
     textAlign: "center",
     marginBottom: 15,
   },
@@ -104,13 +104,13 @@ export const audioStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: colors.primary[500], // ✅ Fixed: Use specific shade
     minWidth: 200,
   },
   previewText: {
     marginTop: 8,
     fontSize: 16,
-    color: colors.primary,
+    color: colors.background.primary,
     fontWeight: "600",
   },
   controls: {
@@ -119,7 +119,7 @@ export const audioStyles = StyleSheet.create({
     gap: 10,
   },
   playButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background.primary,
     padding: 8,
     borderRadius: 20,
     width: 36,
@@ -128,7 +128,7 @@ export const audioStyles = StyleSheet.create({
     alignItems: "center",
   },
   deleteButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background.secondary,
     padding: 8,
     borderRadius: 20,
     width: 36,
@@ -142,13 +142,13 @@ export const audioStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.gray.light,
+    borderColor: colors.gray[300], // ✅ Fixed: Use specific shade
     borderStyle: "dashed",
   },
   recordButtonText: {
     marginTop: 8,
     fontSize: 16,
-    color: colors.primary,
+    color: colors.background.primary,
     fontWeight: "600",
   },
 });
@@ -292,7 +292,7 @@ export const audioRecorderStyles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background.secondary,
     marginBottom: 10,
   },
   recordingText: {
@@ -319,7 +319,7 @@ export const actionButtonStyles = StyleSheet.create({
     gap: 15,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background.primary,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
@@ -331,7 +331,7 @@ export const actionButtonStyles = StyleSheet.create({
     fontWeight: "600",
   },
   secondaryButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background.secondary,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
