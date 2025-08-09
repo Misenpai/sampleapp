@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface ProfileHeaderProps {
   username?: string;
@@ -8,10 +8,10 @@ interface ProfileHeaderProps {
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ username }) => {
   return (
     <View style={styles.header}>
-      <Text style={styles.title}>Profile</Text>
-      {username && (
-        <Text style={styles.subtitle}>Welcome, {username}</Text>
-      )}
+      <View style={styles.headerContent}>
+        <Text style={styles.title}>Profile</Text>
+        <Text style={styles.subtitle}>Manage your account settings</Text>
+      </View>
     </View>
   );
 };
@@ -19,20 +19,23 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ username }) => {
 const styles = StyleSheet.create({
   header: {
     backgroundColor: '#007AFF',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingBottom: 30,
     paddingTop: 60,
   },
+  headerContent: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '800',
     color: 'white',
-    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    fontWeight: '400',
   },
 });

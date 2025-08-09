@@ -1,7 +1,7 @@
-// component/profile/LogoutButton.tsx
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { router } from 'expo-router';
+import React from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 
 interface LogoutButtonProps {
@@ -38,25 +38,35 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({ disabled = false }) 
       onPress={handleLogout}
       disabled={disabled}
     >
-      <Text style={styles.logoutButtonText}>Logout</Text>
+      <FontAwesome6 name="arrow-right-from-bracket" size={18} color="white" />
+      <Text style={styles.logoutButtonText}>Sign Out</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   logoutButton: {
-    backgroundColor: '#dc3545',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 20,
+    marginBottom: 40,
+    flexDirection: 'row',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   disabled: {
     opacity: 0.6,
   },
   logoutButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
   },
 });

@@ -1,8 +1,8 @@
 // hooks/useProfile.ts
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { getUserProfileByUsername, ProfileData, updateUserLocation } from '../services/profileService';
 import { useAuthStore } from '../store/authStore';
-import { getUserProfileByUsername, updateUserLocation, ProfileData } from '../services/profileService';
 
 export const useProfile = () => {
   const { userName, userId } = useAuthStore(); 
