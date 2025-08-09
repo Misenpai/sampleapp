@@ -2,9 +2,9 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { audioStyles } from "@/constants/style";
 import { AudioRecording } from "../../types/attendance";
 import { AudioPlayer } from "../audio/AudioPlayer";
-import { audioStyles } from "@/constants/style";
 
 interface AudioSectionProps {
   audioRecording: AudioRecording | null;

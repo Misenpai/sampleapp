@@ -3,6 +3,7 @@ import {
   RecordingPresets,
   setAudioModeAsync,
   useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
@@ -18,7 +19,10 @@ export function useAudio() {
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
+  
+  // Create a new audio player instance when currentRecording changes
   const audioPlayer = useAudioPlayer(currentRecording?.uri || "");
+  const playerStatus = useAudioPlayerStatus(audioPlayer);
 
   useEffect(() => {
     (async () => {
@@ -35,6 +39,22 @@ export function useAudio() {
     })();
   }, []);
 
+  // Listen to audio player status changes
+  useEffect(() => {
+    if (playerStatus) {
+      if (playerStatus.isLoaded) {
+        setIsPlaying(playerStatus.playing || false);
+        
+        // Handle playback completion
+        if (playerStatus.didJustFinish) {
+          setIsPlaying(false);
+          // Reset player position to beginning for next playback
+          audioPlayer.seekTo(0);
+        }
+      }
+    }
+  }, [playerStatus, audioPlayer]);
+
   const startRecording = async () => {
     if (!audioPermission) {
       Alert.alert("Error", "Microphone permission not granted");
@@ -42,6 +62,12 @@ export function useAudio() {
     }
 
     try {
+      // Stop any playing audio before recording
+      if (audioPlayer && isPlaying) {
+        audioPlayer.pause();
+        setIsPlaying(false);
+      }
+
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (error) {
@@ -67,25 +93,54 @@ export function useAudio() {
   };
 
   const playAudio = async (recording: AudioRecording) => {
-    if (recording && audioPlayer) {
-      try {
+    if (!recording?.uri) {
+      Alert.alert("Error", "No valid recording found");
+      return;
+    }
+
+    try {
+      // Ensure we have the latest recording set
+      if (currentRecording?.uri !== recording.uri) {
+        setCurrentRecording(recording);
+        // Wait a bit for the audio player to initialize with new URI
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      if (audioPlayer) {
+        // If already playing, pause
         if (isPlaying) {
           audioPlayer.pause();
           setIsPlaying(false);
         } else {
-          audioPlayer.play();
+          // Before playing, check if we're at the end and reset if needed
+          if (playerStatus?.isLoaded && playerStatus.currentTime >= (playerStatus.duration || 0)) {
+            audioPlayer.seekTo(0);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          // Start playback
+          await audioPlayer.play();
           setIsPlaying(true);
-
-          audioPlayer.addListener("playbackStatusUpdate", (status) => {
-            if (status.didJustFinish) {
-              setIsPlaying(false);
-            }
-          });
         }
-      } catch (error) {
-        Alert.alert("Error", "Failed to play audio");
-        console.error("Audio playback error:", error);
       }
+    } catch (error) {
+      Alert.alert("Error", "Failed to play audio");
+      console.error("Audio playback error:", error);
+      setIsPlaying(false);
+    }
+  };
+
+  const stopAudio = async () => {
+    try {
+      if (audioPlayer && isPlaying) {
+        audioPlayer.pause();
+        // Reset to beginning
+        audioPlayer.seekTo(0);
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error("Stop audio error:", error);
+      setIsPlaying(false);
     }
   };
 
@@ -99,7 +154,11 @@ export function useAudio() {
           {
             text: "Delete",
             style: "destructive",
-            onPress: () => {
+            onPress: async () => {
+              // Stop playback if active
+              if (isPlaying) {
+                await stopAudio();
+              }
               setCurrentRecording(null);
               setIsPlaying(false);
               resolve();
@@ -118,6 +177,7 @@ export function useAudio() {
     startRecording,
     stopRecording,
     playAudio,
+    stopAudio, // Add this missing method
     deleteRecording,
     setCurrentRecording,
   };
