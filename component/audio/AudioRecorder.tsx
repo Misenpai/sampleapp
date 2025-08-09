@@ -1,40 +1,37 @@
-import { colors } from "@/constants/colors";
-import { audioRecorderStyles } from "@/constants/style";
-import { useAudio } from "@/hooks/useAudio";
+import { colors } from '@/constants/colors';
+import { audioRecorderStyles } from '@/constants/style';
+import { useAudio } from '@/hooks/useAudio';
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import React, { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
   ReduceMotion,
   SlideInRight,
   ZoomIn,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
-import { AudioRecording } from "../../types/attendance";
+  withTiming
+} from 'react-native-reanimated';
+import { AudioRecording } from '../../types/attendance';
 
 interface AudioRecorderProps {
   onBack: () => void;
   onRecordingComplete: (recording: AudioRecording) => void;
 }
 
-export function AudioRecorder({
-  onBack,
-  onRecordingComplete,
-}: AudioRecorderProps) {
+export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProps) {
   const audio = useAudio();
   const [waveformData, setWaveformData] = useState<number[]>([0]);
   const [hasRecording, setHasRecording] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
-
-  const waveformRef = useRef({
-    data: [0],
-    isRecording: false,
+  
+  const waveformRef = useRef({ 
+    data: [0], 
+    isRecording: false, 
     originalData: [0], // Store original waveform for playback
-    playbackStartTime: 0,
+    playbackStartTime: 0
   });
   const width = useSharedValue(10);
   const intervalRef = useRef<number | null>(null);
@@ -43,21 +40,17 @@ export function AudioRecorder({
   const getFormattedDate = () => {
     const today = new Date();
     const day = today.getDate();
-    const month = today.toLocaleString("default", { month: "long" });
-
+    const month = today.toLocaleString('default', { month: 'long' });
+    
     const getDayWithSuffix = (day: number) => {
       if (day >= 11 && day <= 13) {
         return `${day}th`;
       }
       switch (day % 10) {
-        case 1:
-          return `${day}st`;
-        case 2:
-          return `${day}nd`;
-        case 3:
-          return `${day}rd`;
-        default:
-          return `${day}th`;
+        case 1: return `${day}st`;
+        case 2: return `${day}nd`;
+        case 3: return `${day}rd`;
+        default: return `${day}th`;
       }
     };
 
@@ -67,11 +60,11 @@ export function AudioRecorder({
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const customEasing = (value: number) => {
-    "worklet";
+    'worklet';
     return value;
   };
 
@@ -80,7 +73,7 @@ export function AudioRecorder({
       width: withTiming(width.value, {
         duration: 100,
         easing: customEasing,
-        reduceMotion: ReduceMotion.Never,
+        reduceMotion: ReduceMotion.Never
       }),
     };
   });
@@ -91,10 +84,7 @@ export function AudioRecorder({
       // Recording started
       waveformRef.current.isRecording = true;
       startWaveformRecording();
-    } else if (
-      !audio.recorderState.isRecording &&
-      waveformRef.current.isRecording
-    ) {
+    } else if (!audio.recorderState.isRecording && waveformRef.current.isRecording) {
       // Recording stopped
       waveformRef.current.isRecording = false;
       stopWaveformRecording();
@@ -118,7 +108,7 @@ export function AudioRecorder({
   // Effect to track recording duration
   useEffect(() => {
     let durationInterval: number | null = null;
-
+    
     if (audio.recorderState.isRecording) {
       const startTime = Date.now();
       durationInterval = setInterval(() => {
@@ -150,7 +140,7 @@ export function AudioRecorder({
         const baseLevel = 20;
         const randomVariation = Math.random() * 40;
         const randomValue = baseLevel + randomVariation;
-
+        
         const newData = [...waveformRef.current.data, randomValue];
         waveformRef.current.data = newData;
         setWaveformData(newData);
@@ -175,7 +165,7 @@ export function AudioRecorder({
     const originalData = waveformRef.current.originalData;
     const totalDuration = originalData.length * 100; // Assuming 100ms per sample
     waveformRef.current.playbackStartTime = Date.now();
-
+    
     setPlaybackDuration(totalDuration / 1000); // Convert to seconds
     setWaveformData([0]);
     width.value = 10;
@@ -186,15 +176,15 @@ export function AudioRecorder({
         const elapsed = Date.now() - waveformRef.current.playbackStartTime;
         const progress = Math.min(elapsed / totalDuration, 1);
         const samplesToShow = Math.floor(progress * originalData.length);
-
+        
         if (samplesToShow > 0) {
           const currentData = originalData.slice(0, samplesToShow);
           setWaveformData(currentData);
-          width.value = 10 + samplesToShow * 12;
+          width.value = 10 + (samplesToShow * 12);
         }
-
+        
         setPlaybackProgress(progress);
-
+        
         // Auto-stop when playback completes
         if (progress >= 1) {
           stopWaveformPlayback();
@@ -202,7 +192,7 @@ export function AudioRecorder({
           // Reset to full waveform
           setTimeout(() => {
             setWaveformData(originalData);
-            width.value = 10 + originalData.length * 12;
+            width.value = 10 + (originalData.length * 12);
           }, 200);
         }
       }
@@ -241,7 +231,7 @@ export function AudioRecorder({
 
       await audio.startRecording();
     } catch (error) {
-      console.log("Recording start error:", error);
+      console.log('Recording start error:', error);
     }
   };
 
@@ -250,7 +240,7 @@ export function AudioRecorder({
       const recording = await audio.stopRecording();
       // The recording state will be handled by the useEffect above
     } catch (error) {
-      console.log("Recording stop error:", error);
+      console.log('Recording stop error:', error);
     }
   };
 
@@ -266,7 +256,7 @@ export function AudioRecorder({
         }
       }
     } catch (error) {
-      console.log("Playback error:", error);
+      console.log('Playback error:', error);
     }
   };
 
@@ -293,12 +283,12 @@ export function AudioRecorder({
     <View style={audioRecorderStyles.container}>
       {/* Header */}
       <View style={audioRecorderStyles.header}>
-        <Pressable
-          onPress={onBack}
-          style={{
-            padding: 8,
-            borderRadius: 20,
-            backgroundColor: "rgba(0,0,0,0.5)",
+        <Pressable 
+          onPress={onBack} 
+          style={{ 
+            padding: 8, 
+            borderRadius: 20, 
+            backgroundColor: 'rgba(0,0,0,0.5)' 
           }}
         >
           <FontAwesome6 name="arrow-left" size={24} color="white" />
@@ -307,61 +297,46 @@ export function AudioRecorder({
       </View>
 
       {/* Date Prompt */}
-      <View
-        style={[
-          audioRecorderStyles.datePrompt,
-          {
-            paddingHorizontal: 20,
-            paddingVertical: 15,
-            backgroundColor: "rgba(0,0,0,0.1)",
-            borderRadius: 10,
-            marginBottom: 20,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            audioRecorderStyles.dateText,
-            {
-              fontSize: 18,
-              fontWeight: "600",
-              textAlign: "center",
-              color: colors.white,
-            },
-          ]}
-        >
+      <View style={[audioRecorderStyles.datePrompt, { 
+        paddingHorizontal: 20, 
+        paddingVertical: 15,
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        borderRadius: 10,
+        marginBottom: 20 
+      }]}>
+        <Text style={[audioRecorderStyles.dateText, {
+          fontSize: 18,
+          fontWeight: '600',
+          textAlign: 'center',
+          color: colors.white
+        }]}>
           Read the Text &quot;Today is {getFormattedDate()}&quot;
         </Text>
       </View>
 
       <View style={audioRecorderStyles.content}>
         {/* Waveform Visualization */}
-        <View
-          style={{
-            height: 120,
-            backgroundColor: "rgba(0,0,0,0.05)",
-            borderRadius: 15,
-            marginVertical: 20,
-            display: "flex",
-            flexDirection: "row-reverse",
-            alignItems: "center",
-            overflow: "hidden",
-            paddingHorizontal: 10,
-          }}
-        >
-          <Animated.View
-            entering={SlideInRight}
-            style={[
-              {
-                display: "flex",
-                flexDirection: "row",
-                overflow: "hidden",
-                gap: 3,
-                alignItems: "center",
-                minWidth: 50,
-              },
-              waveformStyle,
-            ]}
+        <View style={{
+          height: 120,
+          backgroundColor: 'rgba(0,0,0,0.05)',
+          borderRadius: 15,
+          marginVertical: 20,
+          display: 'flex',
+          flexDirection: 'row-reverse',
+          alignItems: 'center',
+          overflow: 'hidden',
+          paddingHorizontal: 10
+        }}>
+          <Animated.View 
+            entering={SlideInRight} 
+            style={[{
+              display: 'flex',
+              flexDirection: 'row',
+              overflow: 'hidden',
+              gap: 3,
+              alignItems: 'center',
+              minWidth: 50
+            }, waveformStyle]}
           >
             {waveformData.map((amplitude, index) => (
               <Animated.View
@@ -371,18 +346,15 @@ export function AudioRecorder({
                   height: Math.max(amplitude, 4),
                   width: 3,
                   borderRadius: 2,
-                  backgroundColor: audio.recorderState.isRecording
-                    ? "#FF6B6B"
+                  backgroundColor: audio.recorderState.isRecording 
+                    ? '#FF6B6B' 
                     : audio.isPlaying
-                    ? "#FF9500" // Orange during playback
-                    : hasRecording
-                    ? "#007AFF"
-                    : "#ccc",
-                  opacity: audio.isPlaying
-                    ? index / waveformData.length <= playbackProgress
-                      ? 1
-                      : 0.3
-                    : 1,
+                      ? '#FF9500' // Orange during playback
+                      : hasRecording 
+                        ? '#007AFF' 
+                        : '#ccc',
+                  opacity: audio.isPlaying ? 
+                    (index / waveformData.length <= playbackProgress ? 1 : 0.3) : 1
                 }}
               />
             ))}
@@ -390,62 +362,54 @@ export function AudioRecorder({
         </View>
 
         {/* Duration Display */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingHorizontal: 20,
-            marginBottom: 10,
-          }}
-        >
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          marginBottom: 10
+        }}>
           <Text style={{ color: colors.white, fontSize: 14 }}>
-            {audio.isPlaying
-              ? formatTime(playbackProgress * playbackDuration)
-              : "0:00"}
+            {audio.isPlaying ? formatTime(playbackProgress * playbackDuration) : '0:00'}
           </Text>
           <Text style={{ color: colors.white, fontSize: 14 }}>
-            {hasRecording
-              ? formatTime(recordingDuration)
-              : formatTime(recordingDuration)}
+            {hasRecording ? formatTime(recordingDuration) : formatTime(recordingDuration)}
           </Text>
         </View>
 
         {/* Status Indicator */}
         <View style={audioRecorderStyles.recordingIndicator}>
           {audio.recorderState.isRecording && (
-            <Animated.View
-              style={[
-                audioRecorderStyles.recordingDot,
-                {
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
-                  backgroundColor: "#FF6B6B",
-                  marginRight: 8,
-                },
-              ]}
+            <Animated.View 
+              style={[audioRecorderStyles.recordingDot, {
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                backgroundColor: '#FF6B6B',
+                marginRight: 8
+              }]} 
             />
           )}
           {audio.isPlaying && (
-            <Animated.View
+            <Animated.View 
               style={{
                 width: 12,
                 height: 12,
                 borderRadius: 6,
-                backgroundColor: "#FF9500",
-                marginRight: 8,
-              }}
+                backgroundColor: '#FF9500',
+                marginRight: 8
+              }} 
             />
           )}
           <Text style={audioRecorderStyles.recordingText}>
-            {audio.recorderState.isRecording
-              ? `Recording Audio...`
+            {audio.recorderState.isRecording 
+              ? `Recording... ${formatTime(recordingDuration)}`
               : audio.isPlaying
-              ? `Playing Recordin ... `
-              : hasRecording
-              ? "Recording complete"
-              : "Tap to record"}
+                ? `Playing... ${formatTime(playbackProgress * playbackDuration)}`
+                : hasRecording 
+                  ? "Recording complete" 
+                  : "Tap to record"
+            }
           </Text>
         </View>
 
@@ -460,6 +424,9 @@ export function AudioRecorder({
             style={[
               audioRecorderStyles.recordButton,
               {
+                position: "absolute",
+                bottom: 60,
+                alignSelf: "center",
                 backgroundColor: audio.recorderState.isRecording
                   ? "#FF6B6B"
                   : "#007AFF",
@@ -468,7 +435,6 @@ export function AudioRecorder({
                 borderRadius: 40,
                 justifyContent: "center",
                 alignItems: "center",
-                marginVertical: 20,
               },
             ]}
           >
@@ -501,7 +467,7 @@ export function AudioRecorder({
                 height: 60,
                 borderRadius: 30,
                 justifyContent: "center",
-                alignItems: "center",
+                alignItems: "center"
               }}
             >
               <FontAwesome6
@@ -520,10 +486,14 @@ export function AudioRecorder({
                 height: 60,
                 borderRadius: 30,
                 justifyContent: "center",
-                alignItems: "center",
+                alignItems: "center"
               }}
             >
-              <FontAwesome6 name="arrow-rotate-left" size={24} color="white" />
+              <FontAwesome6
+                name="arrow-rotate-left"
+                size={24}
+                color="white"
+              />
             </Pressable>
 
             {/* Complete Button */}
@@ -535,10 +505,14 @@ export function AudioRecorder({
                 height: 60,
                 borderRadius: 30,
                 justifyContent: "center",
-                alignItems: "center",
+                alignItems: "center"
               }}
             >
-              <FontAwesome6 name="check" size={24} color="white" />
+              <FontAwesome6
+                name="check"
+                size={24}
+                color="white"
+              />
             </Pressable>
           </View>
         )}
