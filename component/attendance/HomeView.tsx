@@ -3,8 +3,8 @@ import { colors } from "@/constants/colors";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { CameraCapturedPicture } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AudioRecording } from "../../types/attendance";
 import { ActionButtons } from "./ActionButton";
@@ -22,11 +22,64 @@ interface HomeViewProps {
   uploading: boolean;
   totalPhotos: number;
   selectedLocationLabel: string | null;
-  todayAttendanceMarked?: boolean; // Add this prop
+  todayAttendanceMarked?: boolean;
 }
 
-// Add this component for the attendance marked status
-function AttendanceMarkedCard() {
+// Developer Mode Toggle Component
+function DeveloperModeToggle({ 
+  isEnabled, 
+  onToggle 
+}: { 
+  isEnabled: boolean; 
+  onToggle: () => void;
+}) {
+  const [tapCount, setTapCount] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+
+  const handleSecretTap = () => {
+    const now = Date.now();
+    
+    // Reset tap count if more than 2 seconds have passed
+    if (now - lastTapTime > 2000) {
+      setTapCount(1);
+    } else {
+      setTapCount(prev => prev + 1);
+    }
+    
+    setLastTapTime(now);
+    
+    // Enable developer mode after 5 rapid taps
+    if (tapCount >= 4) {
+      onToggle();
+      setTapCount(0);
+      Alert.alert(
+        "Developer Mode",
+        isEnabled ? "Developer mode disabled" : "Developer mode enabled - You can now mark attendance multiple times for testing",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
+  return (
+    <TouchableOpacity 
+      onPress={handleSecretTap}
+      style={styles.secretTapArea}
+      activeOpacity={1}
+    >
+      <View style={styles.devModeIndicator}>
+        {isEnabled && (
+          <View style={styles.devModeBadge}>
+            <FontAwesome6 name="code" size={12} color={colors.white} />
+            <Text style={styles.devModeText}>DEV</Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// Attendance Marked Card with Override Button
+function AttendanceMarkedCard({ onOverride, devModeEnabled }: { onOverride: () => void; devModeEnabled: boolean; }) {
   return (
     <Animated.View 
       entering={FadeInDown.delay(150).springify()}
@@ -57,6 +110,18 @@ function AttendanceMarkedCard() {
             </Text>
           </View>
         </View>
+        
+        {/* Developer Mode Override Button */}
+        {devModeEnabled && (
+          <TouchableOpacity
+            style={styles.overrideButton}
+            onPress={onOverride}
+            activeOpacity={0.8}
+          >
+            <FontAwesome6 name="flask-vial" size={16} color={colors.white} />
+            <Text style={styles.overrideButtonText}>Test Mode: Mark Again</Text>
+          </TouchableOpacity>
+        )}
       </LinearGradient>
     </Animated.View>
   );
@@ -75,11 +140,37 @@ export function HomeView({
   selectedLocationLabel,
   todayAttendanceMarked = false,
 }: HomeViewProps) {
-  // If attendance is already marked, show the marked status
-  if (todayAttendanceMarked) {
+  const [devModeEnabled, setDevModeEnabled] = useState(false);
+  const [forceShowAttendance, setForceShowAttendance] = useState(false);
+
+  const handleOverrideAttendance = () => {
+    Alert.alert(
+      "Test Mode",
+      "This will allow you to mark attendance again for testing. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Continue", 
+          onPress: () => {
+            setForceShowAttendance(true);
+          }
+        }
+      ]
+    );
+  };
+
+  const toggleDevMode = () => {
+    setDevModeEnabled(!devModeEnabled);
+    if (devModeEnabled) {
+      setForceShowAttendance(false);
+    }
+  };
+
+  // Show attendance marked status only if marked today AND not overridden
+  if (todayAttendanceMarked && !forceShowAttendance) {
     return (
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header Card */}
+        {/* Header Card with Secret Tap Area */}
         <Animated.View 
           entering={FadeInDown.delay(100).springify()}
           style={styles.headerCard}
@@ -102,13 +193,21 @@ export function HomeView({
               </View>
               <View style={styles.headerIcon}>
                 <FontAwesome6 name="calendar-check" size={40} color={colors.white} />
+                {/* Secret tap area for developer mode */}
+                <DeveloperModeToggle 
+                  isEnabled={devModeEnabled} 
+                  onToggle={toggleDevMode}
+                />
               </View>
             </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* Attendance Marked Status */}
-        <AttendanceMarkedCard />
+        {/* Attendance Marked Status with Override */}
+        <AttendanceMarkedCard 
+          onOverride={handleOverrideAttendance}
+          devModeEnabled={devModeEnabled}
+        />
         
         {/* Info Card */}
         <Animated.View 
@@ -120,7 +219,8 @@ export function HomeView({
             <Text style={styles.sectionTitle}>Today&apos;s Summary</Text>
           </View>
           <Text style={styles.sectionDescription}>
-            Your attendance has been successfully recorded for today. You can mark attendance again tomorrow.
+            Your attendance has been successfully recorded for today. 
+            {devModeEnabled ? " Developer mode is active - you can test marking attendance again." : " You can mark attendance again tomorrow."}
           </Text>
           
           <View style={styles.summaryRow}>
@@ -155,7 +255,12 @@ export function HomeView({
           <View style={styles.headerContent}>
             <View style={styles.headerTextContainer}>
               <Text style={styles.greeting}>Good {getTimeOfDay()}!</Text>
-              <Text style={styles.headerTitle}>Mark Your Attendance</Text>
+              <Text style={styles.headerTitle}>
+                Mark Your Attendance
+                {forceShowAttendance && (
+                  <Text style={styles.testModeIndicator}> (Test Mode)</Text>
+                )}
+              </Text>
               <Text style={styles.headerSubtitle}>
                 {selectedLocationLabel
                   ? `📍 ${selectedLocationLabel}`
@@ -164,6 +269,11 @@ export function HomeView({
             </View>
             <View style={styles.headerIcon}>
               <FontAwesome6 name="calendar-check" size={40} color={colors.white} />
+              {/* Secret tap area for developer mode */}
+              <DeveloperModeToggle 
+                isEnabled={devModeEnabled} 
+                onToggle={toggleDevMode}
+              />
             </View>
           </View>
           
@@ -293,6 +403,7 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     marginLeft: 16,
+    position: 'relative',
   },
   statsRow: {
     flexDirection: "row",
@@ -351,7 +462,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
-  // New styles for attendance marked state
   attendanceMarkedCard: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -403,5 +513,57 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 14,
     color: colors.gray[600],
+  },
+  // Developer Mode Styles
+  secretTapArea: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  devModeIndicator: {
+    position: 'absolute',
+    top: -35,
+    right: -5,
+  },
+  devModeBadge: {
+    flexDirection: 'row',
+    backgroundColor: colors.warning,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  devModeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  overrideButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  overrideButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  testModeIndicator: {
+    fontSize: 12,
+    color: colors.warning,
+    fontWeight: 'normal',
   },
 });
