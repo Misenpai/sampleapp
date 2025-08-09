@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
@@ -6,7 +6,6 @@ import {
 } from "react-native";
 
 import { useAttendance } from "@/hooks/useAttendance";
-import { useAudio } from "@/hooks/useAudio";
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence } from "@/hooks/useGeofence";
 
@@ -31,7 +30,7 @@ type ListItem = { id: string; type: "map" | "attendance" };
 export function AttendanceContainer() {
   const attendance = useAttendance();
   const camera = useCamera();
-  const audio = useAudio();
+  // Removed unused audio hook
   const { 
     selectedGeofenceId, 
     selectedLocationLabel, 
@@ -41,12 +40,16 @@ export function AttendanceContainer() {
   const [isMapTouched, setIsMapTouched] = useState(false);
   const geofence = useGeofence(selectedGeofenceId);
 
- useEffect(() => {
-    if (selectedLocationLabel && selectedGeofenceId) {
-      attendance.setSelectedLocationLabel(selectedLocationLabel);
-    }
-  }, [selectedLocationLabel, selectedGeofenceId]);
+  // Use useCallback to memoize the function
+  const setSelectedLocationLabel = useCallback((label: string) => {
+    attendance.setSelectedLocationLabel(label);
+  }, [attendance]);
 
+  useEffect(() => {
+    if (selectedLocationLabel && selectedGeofenceId) {
+      setSelectedLocationLabel(selectedLocationLabel);
+    }
+  }, [selectedLocationLabel, selectedGeofenceId, setSelectedLocationLabel]);
 
   const resolveAttendanceLocation = () => {
     if (selectedLocationLabel) {
@@ -160,7 +163,6 @@ export function AttendanceContainer() {
     case "audioRecorder":
       return (
         <AudioRecorder
-          audio={audio}
           onBack={() => attendance.setCurrentView("home")}
           onRecordingComplete={(rec) => {
             attendance.setAudioRecording(rec);

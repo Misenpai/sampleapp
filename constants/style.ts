@@ -229,6 +229,42 @@ export const audioRecorderStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.black,
   },
+  datePrompt: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  waveformContainer: {
+    height: 100,
+    marginVertical: 20,
+    paddingHorizontal: 16,
+  },
+  waveform: {
+    flex: 1,
+  },
+  playbackControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 20,
+  },
+  controlButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
