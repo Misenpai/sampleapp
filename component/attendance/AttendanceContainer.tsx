@@ -1,20 +1,13 @@
 // component/attendance/AttendanceContainer.tsx
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  ListRenderItem
-} from "react-native";
+import { Alert, FlatList, ListRenderItem } from "react-native";
 
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence } from "@/hooks/useGeofence";
 import { useAttendanceStore } from "@/store/attendanceStore";
 
 import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
-import {
-  attendanceContainerStyles,
-  globalStyles,
-} from "@/constants/style";
+import { attendanceContainerStyles, globalStyles } from "@/constants/style";
 
 import { useLocationStore } from "../../store/locationStore";
 import { AudioRecorder } from "../audio/AudioRecorder";
@@ -49,35 +42,46 @@ export function AttendanceContainer() {
     setSelectedLocationLabel,
     setUploading,
     resetAll,
+    todayAttendanceMarked,
+    checkTodayAttendance,
   } = useAttendanceStore();
 
   const camera = useCamera();
-  const { 
-    selectedGeofenceId, 
-    selectedLocationLabel: locationStoreLabel, 
-  } = useLocationStore();
+  const { selectedGeofenceId, selectedLocationLabel: locationStoreLabel } =
+    useLocationStore();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [isMapTouched, setIsMapTouched] = useState(false);
   const geofence = useGeofence(selectedGeofenceId);
 
   // Initialize user ID on mount
-useEffect(() => {
-  if (isLoadingUserId && !userId) {
-    initializeUserId();
-  }
-}, [isLoadingUserId, userId, initializeUserId]);
+  useEffect(() => {
+    if (isLoadingUserId && !userId) {
+      initializeUserId();
+    }
+  }, [isLoadingUserId, userId, initializeUserId]);
 
   // Use useCallback to memoize the function
-  const updateSelectedLocationLabel = useCallback((label: string) => {
-    setSelectedLocationLabel(label);
-  }, [setSelectedLocationLabel]);
+  const updateSelectedLocationLabel = useCallback(
+    (label: string) => {
+      setSelectedLocationLabel(label);
+    },
+    [setSelectedLocationLabel]
+  );
 
   useEffect(() => {
     if (locationStoreLabel && selectedGeofenceId) {
       updateSelectedLocationLabel(locationStoreLabel);
     }
   }, [locationStoreLabel, selectedGeofenceId, updateSelectedLocationLabel]);
+
+  useEffect(() => {
+    const checkAttendance = () => {
+      const isMarked = checkTodayAttendance();
+      // Update the state if needed
+    };
+    checkAttendance();
+  }, [checkTodayAttendance]);
 
   const resolveAttendanceLocation = () => {
     if (selectedLocationLabel) {
@@ -120,13 +124,16 @@ useEffect(() => {
     return "IIT Guwahati";
   };
 
+  // In AttendanceContainer.tsx - Update the handleUpload function
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
     if (!userId) return;
 
     setUploading(true);
     try {
-      const { uploadAttendanceData } = await import("@/services/attendanceService");
+      const { uploadAttendanceData } = await import(
+        "@/services/attendanceService"
+      );
       const result = await uploadAttendanceData({
         userId,
         photos,
@@ -135,6 +142,10 @@ useEffect(() => {
       });
 
       if (result.success) {
+        // Mark attendance for today
+        const { markAttendanceForToday } = useAttendanceStore.getState();
+        markAttendanceForToday(finalLocation);
+
         Alert.alert("Success", "Attendance recorded!", [
           { text: "OK", onPress: resetAll },
         ]);
@@ -173,8 +184,7 @@ useEffect(() => {
     ]
   );
 
-  if (isLoadingUserId)
-    return <LoadingScreen text="Loading user..." />;
+  if (isLoadingUserId) return <LoadingScreen text="Loading user..." />;
   if (!camera.permission?.granted)
     return <PermissionScreen onRequestPermission={camera.requestPermission} />;
   if (uploading)
@@ -213,9 +223,7 @@ useEffect(() => {
             if (retakeMode) {
               setCurrentView("home");
               setRetakeMode(false);
-            } else if (
-              currentPhotoIndex < TOTAL_PHOTOS - 1
-            ) {
+            } else if (currentPhotoIndex < TOTAL_PHOTOS - 1) {
               setCurrentPhotoIndex(currentPhotoIndex + 1);
             } else {
               setCurrentView("home");
@@ -268,6 +276,7 @@ useEffect(() => {
                 uploading={uploading}
                 totalPhotos={TOTAL_PHOTOS}
                 selectedLocationLabel={selectedLocationLabel}
+                todayAttendanceMarked={todayAttendanceMarked} // Add this line
               />
             );
           default:

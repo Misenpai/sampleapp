@@ -1,11 +1,12 @@
-import React from "react";
-import { Text, View, StyleSheet, ScrollView } from "react-native";
-import { CameraCapturedPicture } from "expo-camera";
-import { AudioRecording } from "../../types/attendance";
+// component/attendance/HomeView.tsx
 import { colors } from "@/constants/colors";
-import { LinearGradient } from "expo-linear-gradient";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { CameraCapturedPicture } from "expo-camera";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { AudioRecording } from "../../types/attendance";
 import { ActionButtons } from "./ActionButton";
 import { AudioSection } from "./AudioSection";
 import { PhotoGrid } from "./PhotoGrid";
@@ -21,6 +22,44 @@ interface HomeViewProps {
   uploading: boolean;
   totalPhotos: number;
   selectedLocationLabel: string | null;
+  todayAttendanceMarked?: boolean; // Add this prop
+}
+
+// Add this component for the attendance marked status
+function AttendanceMarkedCard() {
+  return (
+    <Animated.View 
+      entering={FadeInDown.delay(150).springify()}
+      style={styles.attendanceMarkedCard}
+    >
+      <LinearGradient
+        colors={[colors.success, "#059669"]}
+        style={styles.attendanceMarkedGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.attendanceMarkedContent}>
+          <View style={styles.attendanceMarkedIcon}>
+            <FontAwesome6 name="circle-check" size={32} color={colors.white} />
+          </View>
+          <View style={styles.attendanceMarkedText}>
+            <Text style={styles.attendanceMarkedTitle}>Attendance Marked!</Text>
+            <Text style={styles.attendanceMarkedSubtitle}>
+              You&apos;ve already marked your attendance for today
+            </Text>
+            <Text style={styles.attendanceMarkedTime}>
+              {new Date().toLocaleDateString('en', { 
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </Animated.View>
+  );
 }
 
 export function HomeView({
@@ -34,7 +73,72 @@ export function HomeView({
   uploading,
   totalPhotos,
   selectedLocationLabel,
+  todayAttendanceMarked = false,
 }: HomeViewProps) {
+  // If attendance is already marked, show the marked status
+  if (todayAttendanceMarked) {
+    return (
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header Card */}
+        <Animated.View 
+          entering={FadeInDown.delay(100).springify()}
+          style={styles.headerCard}
+        >
+          <LinearGradient
+            colors={[colors.primary[500], colors.primary[600]]}
+            style={styles.gradientHeader}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.headerContent}>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.greeting}>Good {getTimeOfDay()}!</Text>
+                <Text style={styles.headerTitle}>Attendance Status</Text>
+                <Text style={styles.headerSubtitle}>
+                  {selectedLocationLabel
+                    ? `📍 ${selectedLocationLabel}`
+                    : "📍 Auto-detecting location..."}
+                </Text>
+              </View>
+              <View style={styles.headerIcon}>
+                <FontAwesome6 name="calendar-check" size={40} color={colors.white} />
+              </View>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Attendance Marked Status */}
+        <AttendanceMarkedCard />
+        
+        {/* Info Card */}
+        <Animated.View 
+          entering={FadeInDown.delay(200).springify()}
+          style={styles.sectionCard}
+        >
+          <View style={styles.sectionHeader}>
+            <FontAwesome6 name="circle-info" size={20} color={colors.primary[500]} />
+            <Text style={styles.sectionTitle}>Today&apos;s Summary</Text>
+          </View>
+          <Text style={styles.sectionDescription}>
+            Your attendance has been successfully recorded for today. You can mark attendance again tomorrow.
+          </Text>
+          
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <FontAwesome6 name="clock" size={16} color={colors.gray[500]} />
+              <Text style={styles.summaryText}>Recorded at {new Date().toLocaleTimeString()}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <FontAwesome6 name="location-dot" size={16} color={colors.gray[500]} />
+              <Text style={styles.summaryText}>{selectedLocationLabel || "IIT Guwahati"}</Text>
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
+    );
+  }
+
+  // Regular attendance marking interface
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Card */}
@@ -246,5 +350,58 @@ const styles = StyleSheet.create({
   actionSection: {
     paddingHorizontal: 16,
     paddingBottom: 24,
+  },
+  // New styles for attendance marked state
+  attendanceMarkedCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  attendanceMarkedGradient: {
+    padding: 20,
+  },
+  attendanceMarkedContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  attendanceMarkedIcon: {
+    marginRight: 16,
+  },
+  attendanceMarkedText: {
+    flex: 1,
+  },
+  attendanceMarkedTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.white,
+    marginBottom: 4,
+  },
+  attendanceMarkedSubtitle: {
+    fontSize: 14,
+    color: colors.gray[100],
+    marginBottom: 8,
+  },
+  attendanceMarkedTime: {
+    fontSize: 12,
+    color: colors.gray[200],
+  },
+  summaryRow: {
+    gap: 12,
+    marginTop: 12,
+  },
+  summaryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: colors.gray[600],
   },
 });
