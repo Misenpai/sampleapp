@@ -1,4 +1,5 @@
-import { useAuth } from "@/context/AuthContext";
+// app/(auth)/signup.tsx
+import { useAuthStore } from "@/store/authStore";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -13,7 +14,7 @@ import {
 } from "react-native";
 
 export default function SignupScreen() {
-  const { signUp, isLoading } = useAuth();
+  const { signUp, isLoading } = useAuthStore();
   const [empId, setEmpId] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

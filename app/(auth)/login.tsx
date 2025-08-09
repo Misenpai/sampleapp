@@ -1,5 +1,5 @@
-
-import { useAuth } from "@/context/AuthContext";
+// app/(auth)/login.tsx
+import { useAuthStore } from "@/store/authStore";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 export default function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuthStore();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 

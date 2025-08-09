@@ -1,10 +1,11 @@
+// hooks/useProfile.ts
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuthStore } from '../store/authStore';
 import { getUserProfileByUsername, updateUserLocation, ProfileData } from '../services/profileService';
 
 export const useProfile = () => {
-  const { userName, userId } = useAuth(); 
+  const { userName, userId } = useAuthStore(); 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);

@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from "react";
+// component/attendance/AttendanceContainer.tsx
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
   ListRenderItem
 } from "react-native";
 
-import { useAttendance } from "@/hooks/useAttendance";
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence } from "@/hooks/useGeofence";
+import { useAttendanceStore } from "@/store/attendanceStore";
 
 import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
 import {
@@ -28,28 +29,55 @@ import { HomeView } from "./HomeView";
 type ListItem = { id: string; type: "map" | "attendance" };
 
 export function AttendanceContainer() {
-  const attendance = useAttendance();
+  const {
+    userId,
+    isLoadingUserId,
+    photos,
+    audioRecording,
+    currentView,
+    uploading,
+    currentPhotoIndex,
+    retakeMode,
+    selectedLocationLabel,
+    TOTAL_PHOTOS,
+    initializeUserId,
+    setPhotos,
+    setAudioRecording,
+    setCurrentView,
+    setCurrentPhotoIndex,
+    setRetakeMode,
+    setSelectedLocationLabel,
+    setUploading,
+    resetAll,
+  } = useAttendanceStore();
+
   const camera = useCamera();
-  // Removed unused audio hook
   const { 
     selectedGeofenceId, 
-    selectedLocationLabel, 
+    selectedLocationLabel: locationStoreLabel, 
   } = useLocationStore();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [isMapTouched, setIsMapTouched] = useState(false);
   const geofence = useGeofence(selectedGeofenceId);
 
+  // Initialize user ID on mount
+  useEffect(() => {
+    if (isLoadingUserId && !userId) {
+      initializeUserId();
+    }
+  }, []);
+
   // Use useCallback to memoize the function
-  const setSelectedLocationLabel = useCallback((label: string) => {
-    attendance.setSelectedLocationLabel(label);
-  }, [attendance]);
+  const updateSelectedLocationLabel = useCallback((label: string) => {
+    setSelectedLocationLabel(label);
+  }, [setSelectedLocationLabel]);
 
   useEffect(() => {
-    if (selectedLocationLabel && selectedGeofenceId) {
-      setSelectedLocationLabel(selectedLocationLabel);
+    if (locationStoreLabel && selectedGeofenceId) {
+      updateSelectedLocationLabel(locationStoreLabel);
     }
-  }, [selectedLocationLabel, selectedGeofenceId, setSelectedLocationLabel]);
+  }, [locationStoreLabel, selectedGeofenceId, updateSelectedLocationLabel]);
 
   const resolveAttendanceLocation = () => {
     if (selectedLocationLabel) {
@@ -94,21 +122,21 @@ export function AttendanceContainer() {
 
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
-    if (!attendance.userId) return;
+    if (!userId) return;
 
-    attendance.setUploading(true);
+    setUploading(true);
     try {
       const { uploadAttendanceData } = await import("@/services/attendanceService");
       const result = await uploadAttendanceData({
-        userId: attendance.userId,
-        photos: attendance.photos,
-        audioRecording: attendance.audioRecording || undefined,
+        userId,
+        photos,
+        audioRecording: audioRecording || undefined,
         location: finalLocation,
       });
 
       if (result.success) {
         Alert.alert("Success", "Attendance recorded!", [
-          { text: "OK", onPress: attendance.resetAll },
+          { text: "OK", onPress: resetAll },
         ]);
       } else {
         Alert.alert("Error", result.error ?? "Upload failed");
@@ -116,7 +144,7 @@ export function AttendanceContainer() {
     } catch {
       Alert.alert("Error", "Upload error");
     } finally {
-      attendance.setUploading(false);
+      setUploading(false);
     }
   };
 
@@ -145,11 +173,11 @@ export function AttendanceContainer() {
     ]
   );
 
-  if (attendance.isLoadingUserId)
+  if (isLoadingUserId)
     return <LoadingScreen text="Loading user..." />;
   if (!camera.permission?.granted)
     return <PermissionScreen onRequestPermission={camera.requestPermission} />;
-  if (attendance.uploading)
+  if (uploading)
     return <LoadingScreen text="Uploading..." subtext="Please wait" />;
   if (showExpandedMap)
     return (
@@ -159,14 +187,14 @@ export function AttendanceContainer() {
       />
     );
 
-  switch (attendance.currentView) {
+  switch (currentView) {
     case "audioRecorder":
       return (
         <AudioRecorder
-          onBack={() => attendance.setCurrentView("home")}
+          onBack={() => setCurrentView("home")}
           onRecordingComplete={(rec) => {
-            attendance.setAudioRecording(rec);
-            attendance.setCurrentView("home");
+            setAudioRecording(rec);
+            setCurrentView("home");
           }}
         />
       );
@@ -174,28 +202,28 @@ export function AttendanceContainer() {
       return (
         <CameraView
           camera={camera}
-          currentPhotoIndex={attendance.currentPhotoIndex}
-          retakeMode={attendance.retakeMode}
-          totalPhotos={attendance.TOTAL_PHOTOS}
+          currentPhotoIndex={currentPhotoIndex}
+          retakeMode={retakeMode}
+          totalPhotos={TOTAL_PHOTOS}
           onPhotoTaken={(photo) => {
-            const next = [...attendance.photos];
-            next[attendance.currentPhotoIndex] = photo;
-            attendance.setPhotos(next);
+            const next = [...photos];
+            next[currentPhotoIndex] = photo;
+            setPhotos(next);
 
-            if (attendance.retakeMode) {
-              attendance.setCurrentView("home");
-              attendance.setRetakeMode(false);
+            if (retakeMode) {
+              setCurrentView("home");
+              setRetakeMode(false);
             } else if (
-              attendance.currentPhotoIndex < attendance.TOTAL_PHOTOS - 1
+              currentPhotoIndex < TOTAL_PHOTOS - 1
             ) {
-              attendance.setCurrentPhotoIndex(attendance.currentPhotoIndex + 1);
+              setCurrentPhotoIndex(currentPhotoIndex + 1);
             } else {
-              attendance.setCurrentView("home");
+              setCurrentView("home");
             }
           }}
           onBack={() => {
-            attendance.setCurrentView("home");
-            attendance.setRetakeMode(false);
+            setCurrentView("home");
+            setRetakeMode(false);
           }}
         />
       );
@@ -219,26 +247,26 @@ export function AttendanceContainer() {
           case "attendance":
             return (
               <HomeView
-                photos={attendance.photos}
-                audioRecording={attendance.audioRecording}
+                photos={photos}
+                audioRecording={audioRecording}
                 onTakePhotos={() => {
-                  attendance.setCurrentPhotoIndex(0);
-                  attendance.setRetakeMode(false);
-                  attendance.setCurrentView("camera");
+                  setCurrentPhotoIndex(0);
+                  setRetakeMode(false);
+                  setCurrentView("camera");
                 }}
                 onRetakePhoto={(idx) => {
-                  attendance.setCurrentPhotoIndex(idx);
-                  attendance.setRetakeMode(true);
-                  attendance.setCurrentView("camera");
+                  setCurrentPhotoIndex(idx);
+                  setRetakeMode(true);
+                  setCurrentView("camera");
                 }}
                 onRetakeAll={() => {
-                  attendance.resetAll();
-                  attendance.setCurrentView("camera");
+                  resetAll();
+                  setCurrentView("camera");
                 }}
-                onRecordAudio={() => attendance.setCurrentView("audioRecorder")}
+                onRecordAudio={() => setCurrentView("audioRecorder")}
                 onUpload={handleUpload}
-                uploading={attendance.uploading}
-                totalPhotos={attendance.TOTAL_PHOTOS}
+                uploading={uploading}
+                totalPhotos={TOTAL_PHOTOS}
                 selectedLocationLabel={selectedLocationLabel}
               />
             );

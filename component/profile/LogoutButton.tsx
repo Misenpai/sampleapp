@@ -1,14 +1,15 @@
+// component/profile/LogoutButton.tsx
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthStore } from '../../store/authStore';
 
 interface LogoutButtonProps {
   disabled?: boolean;
 }
 
 export const LogoutButton: React.FC<LogoutButtonProps> = ({ disabled = false }) => {
-  const { signOut } = useAuth();
+  const { signOut } = useAuthStore();
 
   const handleLogout = () => {
     Alert.alert(
