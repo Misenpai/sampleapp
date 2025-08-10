@@ -226,8 +226,6 @@ export function AttendanceContainer() {
             if (retakeMode) {
               setCurrentView("home");
               setRetakeMode(false);
-            } else if (currentPhotoIndex < TOTAL_PHOTOS - 1) {
-              setCurrentPhotoIndex(currentPhotoIndex + 1);
             } else {
               setCurrentView("home");
             }

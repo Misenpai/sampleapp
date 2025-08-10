@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { colors } from "@/constants/colors";
+import { useAttendanceStore } from "@/store/attendanceStore";
 import { CameraControls } from "./CameraControl";
 import { PhotoPreviewModal } from "./PhotoPreviewModal";
 import { SelfieInstructions } from "./SelfieInstructions";
@@ -29,12 +30,6 @@ interface CameraViewProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Determine photo position based on index
-const getPhotoPosition = (index: number): 'front' | 'left' | 'right' => {
-  const positions: ('front' | 'left' | 'right')[] = ['front', 'left', 'right'];
-  return positions[index % 3];
-};
-
 export function CameraView({
   camera,
   currentPhotoIndex,
@@ -49,14 +44,14 @@ export function CameraView({
   const [isCapturing, setIsCapturing] = useState(false);
   
   const shutterOpacity = useSharedValue(0);
-  const currentPosition = getPhotoPosition(currentPhotoIndex);
+  
+  const getTodayPhotoPosition = useAttendanceStore((state) => state.getTodayPhotoPosition);
+  const currentPosition = getTodayPhotoPosition();
 
   useEffect(() => {
-    // Show instructions for 3 seconds, then hide
     const timer = setTimeout(() => {
       setShowInstructions(false);
     }, 5000);
-
     return () => clearTimeout(timer);
   }, [currentPhotoIndex]);
 
@@ -66,10 +61,8 @@ export function CameraView({
 
   const handleTakePicture = async () => {
     if (isCapturing) return;
-    
     setIsCapturing(true);
-    
-    // Shutter animation
+
     shutterOpacity.value = withSpring(1, { damping: 1 }, () => {
       shutterOpacity.value = withSpring(0);
     });
@@ -79,7 +72,6 @@ export function CameraView({
       setCapturedPhoto(photo);
       setShowPreview(true);
     }
-    
     setIsCapturing(false);
   };
 
@@ -116,6 +108,17 @@ export function CameraView({
           pointerEvents="none"
         />
 
+        {/* Quick Tips - moved to top */}
+        <View style={styles.quickTips}>
+          <Text style={styles.quickTipText}>
+            {currentPosition === 'front' 
+              ? '📷 Look straight at camera'
+              : currentPosition === 'left'
+              ? '👈 Turn head to your left'
+              : '👉 Turn head to your right'}
+          </Text>
+        </View>
+
         {/* Top Controls */}
         <View style={styles.topControls}>
           <Pressable onPress={onBack} style={styles.backButton}>
@@ -125,8 +128,8 @@ export function CameraView({
           <View style={styles.counterOverlay}>
             <Text style={styles.counterText}>
               {retakeMode
-                ? `Retaking Photo ${currentPhotoIndex + 1}`
-                : `Photo ${currentPhotoIndex + 1} of ${totalPhotos}`}
+                ? `Retaking Photo`
+                : `Today's Photo: ${currentPosition === 'front' ? 'Front Face' : currentPosition === 'left' ? 'Left Profile' : 'Right Profile'}`}
             </Text>
           </View>
 
@@ -143,7 +146,6 @@ export function CameraView({
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
             
-            {/* Position Indicator */}
             <View style={styles.positionIndicator}>
               <FontAwesome6 
                 name={
@@ -179,17 +181,6 @@ export function CameraView({
         {/* Camera Controls */}
         <View style={styles.bottomControls}>
           <CameraControls onTakePicture={handleTakePicture} />
-          
-          {/* Quick Tips */}
-          <View style={styles.quickTips}>
-            <Text style={styles.quickTipText}>
-              {currentPosition === 'front' 
-                ? '📷 Look straight at camera'
-                : currentPosition === 'left'
-                ? '👈 Turn head to your left'
-                : '👉 Turn head to your right'}
-            </Text>
-          </View>
         </View>
       </ExpoCameraView>
 
@@ -250,9 +241,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  quickTips: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 20,
+    marginTop: 100,
+    borderRadius: 20,
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : (StatusBar.currentHeight ?? 40) + 60,
+    alignSelf: 'center',
+    zIndex: 11,
+  },
+  quickTipText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   faceGuideContainer: {
     position: 'absolute',
-    top: '25%',
+    top: '40%',
     left: '50%',
     transform: [{ translateX: -100 }, { translateY: -100 }],
   },
@@ -260,6 +266,8 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   corner: {
     position: 'absolute',
@@ -297,10 +305,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
   },
   positionIndicator: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -50 }],
     alignItems: 'center',
   },
   positionText: {
@@ -317,24 +321,13 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -150 }],
     zIndex: 5,
   },
-  bottomControls: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 44,
-    alignItems: 'center',
-  },
-  quickTips: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
-  },
-  quickTipText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+bottomControls: {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  alignItems: 'center', // ✅ center horizontally
+  paddingBottom: 20,    // optional spacing from bottom
+}
+
 });

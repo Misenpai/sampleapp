@@ -281,7 +281,7 @@ export function HomeView({
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{photos.length}/{totalPhotos}</Text>
-              <Text style={styles.statLabel}>Photos</Text>
+              <Text style={styles.statLabel}>Photo</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
@@ -307,7 +307,7 @@ export function HomeView({
           <Text style={styles.sectionTitle}>Photo Verification</Text>
         </View>
         <Text style={styles.sectionDescription}>
-          Capture {totalPhotos} photos for attendance verification
+          Capture today&apos;s required photo for attendance verification
         </Text>
         <PhotoGrid
           photos={photos}
@@ -358,7 +358,6 @@ function getTimeOfDay() {
   if (hour < 17) return "Afternoon";
   return "Evening";
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

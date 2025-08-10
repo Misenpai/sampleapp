@@ -1,10 +1,11 @@
 import { colors } from "@/constants/colors";
+import { useAttendanceStore } from "@/store/attendanceStore";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { CameraCapturedPicture } from "expo-camera";
 import { Image } from "expo-image";
 import React from "react";
-import { Pressable, Text, View, StyleSheet } from "react-native";
-import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 
 interface PhotoGridProps {
   photos: CameraCapturedPicture[];
@@ -17,66 +18,99 @@ export function PhotoGrid({
   onRetakePhoto,
   totalPhotos,
 }: PhotoGridProps) {
+  // Get today's photo position from the store
+  const getTodayPhotoPosition = useAttendanceStore((state) => state.getTodayPhotoPosition);
+  const todayPosition = getTodayPhotoPosition();
+  
+  const getPositionLabel = () => {
+    switch (todayPosition) {
+      case 'front':
+        return 'Front Face';
+      case 'left':
+        return 'Left Profile';
+      case 'right':
+        return 'Right Profile';
+      default:
+        return 'Front Face';
+    }
+  };
+
+  const getPositionIcon = () => {
+    switch (todayPosition) {
+      case 'front':
+        return 'user';
+      case 'left':
+        return 'angle-left';
+      case 'right':
+        return 'angle-right';
+      default:
+        return 'user';
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {Array.from({ length: totalPhotos }, (_, index) => (
-        <Animated.View 
-          key={index} 
-          entering={ZoomIn.delay(index * 100)}
-          style={styles.photoContainer}
-        >
-          <View style={styles.photoNumberBadge}>
-            <Text style={styles.photoNumber}>{index + 1}</Text>
-          </View>
-          
-          {photos[index] ? (
-            <View style={styles.photoWrapper}>
-              <Image
-                source={{ uri: photos[index].uri }}
-                style={styles.photoPreview}
-                contentFit="cover"
-              />
-              <Pressable
-                onPress={() => onRetakePhoto(index)}
-                style={styles.retakeOverlay}
-              >
-                <FontAwesome6 name="arrow-rotate-left" size={16} color={colors.white} />
-                <Text style={styles.retakeText}>Retake</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable style={styles.emptySlot}>
-              <FontAwesome6 name="camera" size={28} color={colors.gray[400]} />
-              <Text style={styles.emptyText}>Tap to capture</Text>
+      <Animated.View 
+        entering={ZoomIn}
+        style={styles.singlePhotoContainer}
+      >
+        <View style={styles.photoPositionBadge}>
+          <FontAwesome6 name={getPositionIcon()} size={14} color={colors.white} />
+          <Text style={styles.positionLabel}>{getPositionLabel()}</Text>
+        </View>
+        
+        {photos[0] ? (
+          <View style={styles.photoWrapper}>
+            <Image
+              source={{ uri: photos[0].uri }}
+              style={styles.photoPreview}
+              contentFit="cover"
+            />
+            <Pressable
+              onPress={() => onRetakePhoto(0)}
+              style={styles.retakeOverlay}
+            >
+              <FontAwesome6 name="arrow-rotate-left" size={20} color={colors.white} />
+              <Text style={styles.retakeText}>Retake</Text>
             </Pressable>
-          )}
-        </Animated.View>
-      ))}
+          </View>
+        ) : (
+          <Pressable style={styles.emptySlot}>
+            <FontAwesome6 name="camera" size={36} color={colors.gray[400]} />
+            <Text style={styles.emptyText}>Tap to capture</Text>
+            <Text style={styles.emptySubtext}>Today: {getPositionLabel()}</Text>
+          </Pressable>
+        )}
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  photoContainer: {
-    flex: 1,
+  singlePhotoContainer: {
+    width: "100%",
+    maxWidth: 250,
     position: "relative",
   },
-  photoNumberBadge: {
+  photoPositionBadge: {
     position: "absolute",
-    top: -8,
-    left: -4,
+    top: -10,
+    left: "50%",
+    transform: [{ translateX: -60 }],
     backgroundColor: colors.primary[500],
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     zIndex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  photoNumber: {
+  positionLabel: {
     fontSize: 12,
     fontWeight: "bold",
     color: colors.white,
@@ -84,12 +118,12 @@ const styles = StyleSheet.create({
   photoWrapper: {
     position: "relative",
     overflow: "hidden",
-    borderRadius: 12,
+    borderRadius: 16,
   },
   photoPreview: {
     width: "100%",
     aspectRatio: 0.75,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: colors.gray[100],
   },
   retakeOverlay: {
@@ -101,27 +135,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    paddingVertical: 8,
+    gap: 8,
+    paddingVertical: 12,
   },
   retakeText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
   },
   emptySlot: {
     aspectRatio: 0.75,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: colors.gray[50],
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: colors.gray[200],
     borderStyle: "dashed",
   },
   emptyText: {
-    marginTop: 8,
-    fontSize: 11,
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.gray[500],
+    fontWeight: "600",
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 12,
     color: colors.gray[400],
   },
 });

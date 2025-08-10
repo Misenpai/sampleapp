@@ -194,7 +194,7 @@ export const cameraStyles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   controlSpacer: {
-    width: 32,
+    display: 'none',
   },
   shutterBtn: {
     alignItems: "center",

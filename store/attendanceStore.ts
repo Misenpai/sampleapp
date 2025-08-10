@@ -15,6 +15,8 @@ interface AttendanceRecord {
   hasAudio: boolean;
 }
 
+export type PhotoPosition = 'front' | 'left' | 'right';
+
 interface AttendanceState {
   // State
   userId: string | null;
@@ -29,6 +31,7 @@ interface AttendanceState {
   TOTAL_PHOTOS: number;
   attendanceRecords: AttendanceRecord[];
   todayAttendanceMarked: boolean;
+  todayPhotoPosition: PhotoPosition | null;
 
   // Actions
   initializeUserId: () => Promise<void>;
@@ -41,12 +44,29 @@ interface AttendanceState {
   setUploading: (uploading: boolean) => void;
   markAttendanceForToday: (location: string) => void;
   checkTodayAttendance: () => boolean;
+  getTodayPhotoPosition: () => PhotoPosition;
   resetAll: () => void;
 }
 
 const getTodayDateString = () => {
   const today = new Date();
   return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+};
+
+// Generate a deterministic random position based on userId and date
+const generateDailyPhotoPosition = (userId: string, date: string): PhotoPosition => {
+  // Create a seed from userId and date
+  let seed = 0;
+  const combined = userId + date;
+  for (let i = 0; i < combined.length; i++) {
+    seed = ((seed << 5) - seed) + combined.charCodeAt(i);
+    seed = seed & seed; // Convert to 32-bit integer
+  }
+  
+  // Use the seed to generate a number between 0-2
+  const random = Math.abs(seed) % 3;
+  const positions: PhotoPosition[] = ['front', 'left', 'right'];
+  return positions[random];
 };
 
 export const useAttendanceStore = create<AttendanceState>()(
@@ -62,9 +82,10 @@ export const useAttendanceStore = create<AttendanceState>()(
       currentPhotoIndex: 0,
       retakeMode: false,
       selectedLocationLabel: null,
-      TOTAL_PHOTOS: 3,
+      TOTAL_PHOTOS: 1, // Changed from 3 to 1
       attendanceRecords: [],
       todayAttendanceMarked: false,
+      todayPhotoPosition: null,
 
       // Actions
       initializeUserId: async () => {
@@ -73,6 +94,11 @@ export const useAttendanceStore = create<AttendanceState>()(
           if (!id) throw new Error("User ID null");
           console.log(id);
           set({ userId: id, isLoadingUserId: false });
+          
+          // Initialize today's photo position
+          const today = getTodayDateString();
+          const position = generateDailyPhotoPosition(id, today);
+          set({ todayPhotoPosition: position });
           
           // Check today's attendance after initializing
           const todayMarked = get().checkTodayAttendance();
@@ -125,6 +151,22 @@ export const useAttendanceStore = create<AttendanceState>()(
         const state = get();
         const todayRecord = state.attendanceRecords.find(record => record.date === today);
         return !!todayRecord;
+      },
+
+      getTodayPhotoPosition: () => {
+        const state = get();
+        if (!state.userId) return 'front'; // Default fallback
+        
+        // If already calculated for today, return it
+        if (state.todayPhotoPosition) {
+          return state.todayPhotoPosition;
+        }
+        
+        // Generate and store for today
+        const today = getTodayDateString();
+        const position = generateDailyPhotoPosition(state.userId, today);
+        set({ todayPhotoPosition: position });
+        return position;
       },
       
       resetAll: () => set({

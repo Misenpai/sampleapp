@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { CameraCapturedPicture } from 'expo-camera';
 import { colors } from '@/constants/colors';
-import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import Animated, { 
-  useAnimatedStyle, 
-  withSpring,
+import { CameraCapturedPicture } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
   useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
 
 interface ActionButtonsProps {
@@ -61,7 +61,7 @@ export function ActionButtons({
             end={{ x: 1, y: 0 }}
           >
             <FontAwesome6 name="camera" size={20} color={colors.white} />
-            <Text style={styles.primaryButtonText}>Start Taking Photos</Text>
+            <Text style={styles.primaryButtonText}>Take Photo</Text>
           </LinearGradient>
         </AnimatedPressable>
       ) : (
@@ -103,7 +103,7 @@ export function ActionButtons({
             style={styles.secondaryButton}
           >
             <FontAwesome6 name="arrow-rotate-left" size={18} color={colors.error} />
-            <Text style={styles.secondaryButtonText}>Retake All</Text>
+            <Text style={styles.secondaryButtonText}>Retake</Text>
           </Pressable>
         </View>
       )}
@@ -112,7 +112,7 @@ export function ActionButtons({
         <View style={styles.infoCard}>
           <FontAwesome6 name="circle-info" size={16} color={colors.warning} />
           <Text style={styles.infoText}>
-            Please capture all {totalPhotos} photos to submit attendance
+            Please capture the required photo to submit attendance
           </Text>
         </View>
       )}
