@@ -18,9 +18,9 @@ interface AttendanceRecord {
 export type PhotoPosition = 'front' | 'left' | 'right';
 
 interface AttendanceState {
-  // State
   userId: string | null;
   isLoadingUserId: boolean;
+  isInitialized: boolean;
   photos: CameraCapturedPicture[];
   audioRecording: AudioRecording | null;
   currentView: ViewMode;
@@ -31,7 +31,7 @@ interface AttendanceState {
   TOTAL_PHOTOS: number;
   attendanceRecords: AttendanceRecord[];
   todayAttendanceMarked: boolean;
-  todayPhotoPosition: PhotoPosition | null;
+  currentSessionPhotoPosition: PhotoPosition | null;
 
   // Actions
   initializeUserId: () => Promise<void>;
@@ -45,6 +45,7 @@ interface AttendanceState {
   markAttendanceForToday: (location: string) => void;
   checkTodayAttendance: () => boolean;
   getTodayPhotoPosition: () => PhotoPosition;
+  generateNewPhotoPosition: () => PhotoPosition;
   resetAll: () => void;
 }
 
@@ -53,20 +54,11 @@ const getTodayDateString = () => {
   return today.toISOString().split('T')[0]; // YYYY-MM-DD format
 };
 
-// Generate a deterministic random position based on userId and date
-const generateDailyPhotoPosition = (userId: string, date: string): PhotoPosition => {
-  // Create a seed from userId and date
-  let seed = 0;
-  const combined = userId + date;
-  for (let i = 0; i < combined.length; i++) {
-    seed = ((seed << 5) - seed) + combined.charCodeAt(i);
-    seed = seed & seed; // Convert to 32-bit integer
-  }
-  
-  // Use the seed to generate a number between 0-2
-  const random = Math.abs(seed) % 3;
+// Generate a truly random position
+const generateRandomPhotoPosition = (): PhotoPosition => {
   const positions: PhotoPosition[] = ['front', 'left', 'right'];
-  return positions[random];
+  const randomIndex = Math.floor(Math.random() * positions.length);
+  return positions[randomIndex];
 };
 
 export const useAttendanceStore = create<AttendanceState>()(
@@ -75,6 +67,7 @@ export const useAttendanceStore = create<AttendanceState>()(
       // Initial state
       userId: null,
       isLoadingUserId: true,
+      isInitialized: false,
       photos: [],
       audioRecording: null,
       currentView: 'home',
@@ -85,7 +78,7 @@ export const useAttendanceStore = create<AttendanceState>()(
       TOTAL_PHOTOS: 1, // Changed from 3 to 1
       attendanceRecords: [],
       todayAttendanceMarked: false,
-      todayPhotoPosition: null,
+      currentSessionPhotoPosition: null,
 
       // Actions
       initializeUserId: async () => {
@@ -93,19 +86,21 @@ export const useAttendanceStore = create<AttendanceState>()(
           const id = await getOrCreateUserId();
           if (!id) throw new Error("User ID null");
           console.log(id);
-          set({ userId: id, isLoadingUserId: false });
-          
-          // Initialize today's photo position
-          const today = getTodayDateString();
-          const position = generateDailyPhotoPosition(id, today);
-          set({ todayPhotoPosition: position });
+          set({ 
+            userId: id, 
+            isLoadingUserId: false,
+            isInitialized: true 
+          });
           
           // Check today's attendance after initializing
           const todayMarked = get().checkTodayAttendance();
           set({ todayAttendanceMarked: todayMarked });
         } catch {
           Alert.alert("Error", "Failed to initialize user ID");
-          set({ isLoadingUserId: false });
+          set({ 
+            isLoadingUserId: false,
+            isInitialized: true 
+          });
         }
       },
 
@@ -113,7 +108,21 @@ export const useAttendanceStore = create<AttendanceState>()(
       
       setAudioRecording: (recording) => set({ audioRecording: recording }),
       
-      setCurrentView: (view) => set({ currentView: view }),
+      setCurrentView: (view) => {
+        const state = get();
+        
+        // Generate a new random position when starting camera for the first time in this session
+        // (not in retake mode and no position set yet)
+        if (view === 'camera' && !state.retakeMode && !state.currentSessionPhotoPosition) {
+          const newPosition = generateRandomPhotoPosition();
+          set({ 
+            currentView: view,
+            currentSessionPhotoPosition: newPosition 
+          });
+        } else {
+          set({ currentView: view });
+        }
+      },
       
       setCurrentPhotoIndex: (index) => set({ currentPhotoIndex: index }),
       
@@ -155,17 +164,21 @@ export const useAttendanceStore = create<AttendanceState>()(
 
       getTodayPhotoPosition: () => {
         const state = get();
-        if (!state.userId) return 'front'; // Default fallback
         
-        // If already calculated for today, return it
-        if (state.todayPhotoPosition) {
-          return state.todayPhotoPosition;
+        // If we already have a position for this session, return it
+        // Don't set state here to avoid updates during render
+        if (state.currentSessionPhotoPosition) {
+          return state.currentSessionPhotoPosition;
         }
         
-        // Generate and store for today
-        const today = getTodayDateString();
-        const position = generateDailyPhotoPosition(state.userId, today);
-        set({ todayPhotoPosition: position });
+        // Return a default if not set yet (will be set when camera opens)
+        return 'front';
+      },
+
+      generateNewPhotoPosition: () => {
+        // This can be called to explicitly generate a new position
+        const position = generateRandomPhotoPosition();
+        set({ currentSessionPhotoPosition: position });
         return position;
       },
       
@@ -176,6 +189,7 @@ export const useAttendanceStore = create<AttendanceState>()(
         currentView: 'home',
         retakeMode: false,
         selectedLocationLabel: null,
+        currentSessionPhotoPosition: null, // Reset the position for next attendance
       }),
     }),
     {
@@ -183,6 +197,7 @@ export const useAttendanceStore = create<AttendanceState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         attendanceRecords: state.attendanceRecords,
+        // Don't persist currentSessionPhotoPosition - it should be fresh each session
       }),
     }
   )

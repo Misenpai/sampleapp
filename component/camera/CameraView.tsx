@@ -45,8 +45,8 @@ export function CameraView({
   
   const shutterOpacity = useSharedValue(0);
   
-  const getTodayPhotoPosition = useAttendanceStore((state) => state.getTodayPhotoPosition);
-  const currentPosition = getTodayPhotoPosition();
+  // Get the current photo position from the store
+  const currentPosition = useAttendanceStore((state) => state.currentSessionPhotoPosition) || 'front';
 
   useEffect(() => {
     const timer = setTimeout(() => {

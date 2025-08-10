@@ -25,6 +25,7 @@ export function AttendanceContainer() {
   const {
     userId,
     isLoadingUserId,
+    isInitialized,
     photos,
     audioRecording,
     currentView,
@@ -56,10 +57,10 @@ export function AttendanceContainer() {
 
   // Initialize user ID on mount
   useEffect(() => {
-    if (isLoadingUserId && !userId) {
+    if (!isInitialized) {
       initializeUserId();
     }
-  }, [isLoadingUserId, userId, initializeUserId]);
+  }, [isInitialized, initializeUserId]);
 
   // Use useCallback to memoize the function
   const updateSelectedLocationLabel = useCallback(
@@ -259,6 +260,9 @@ export function AttendanceContainer() {
                 photos={photos}
                 audioRecording={audioRecording}
                 onTakePhotos={() => {
+                  // Generate new photo position when starting to take photos
+                  const { generateNewPhotoPosition } = useAttendanceStore.getState();
+                  generateNewPhotoPosition();
                   setCurrentPhotoIndex(0);
                   setRetakeMode(false);
                   setCurrentView("camera");

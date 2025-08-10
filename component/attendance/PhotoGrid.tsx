@@ -3,7 +3,7 @@ import { useAttendanceStore } from "@/store/attendanceStore";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { CameraCapturedPicture } from "expo-camera";
 import { Image } from "expo-image";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
@@ -18,11 +18,10 @@ export function PhotoGrid({
   onRetakePhoto,
   totalPhotos,
 }: PhotoGridProps) {
-  // Get today's photo position from the store
-  const getTodayPhotoPosition = useAttendanceStore((state) => state.getTodayPhotoPosition);
-  const todayPosition = getTodayPhotoPosition();
+  // Get the photo position from the store - use selector to avoid unnecessary re-renders
+  const todayPosition = useAttendanceStore((state) => state.currentSessionPhotoPosition) || 'front';
   
-  const getPositionLabel = () => {
+  const positionLabel = useMemo(() => {
     switch (todayPosition) {
       case 'front':
         return 'Front Face';
@@ -33,9 +32,9 @@ export function PhotoGrid({
       default:
         return 'Front Face';
     }
-  };
+  }, [todayPosition]);
 
-  const getPositionIcon = () => {
+  const positionIcon = useMemo(() => {
     switch (todayPosition) {
       case 'front':
         return 'user';
@@ -46,7 +45,7 @@ export function PhotoGrid({
       default:
         return 'user';
     }
-  };
+  }, [todayPosition]);
 
   return (
     <View style={styles.container}>
@@ -55,8 +54,8 @@ export function PhotoGrid({
         style={styles.singlePhotoContainer}
       >
         <View style={styles.photoPositionBadge}>
-          <FontAwesome6 name={getPositionIcon()} size={14} color={colors.white} />
-          <Text style={styles.positionLabel}>{getPositionLabel()}</Text>
+          <FontAwesome6 name={positionIcon} size={14} color={colors.white} />
+          <Text style={styles.positionLabel}>{positionLabel}</Text>
         </View>
         
         {photos[0] ? (
@@ -78,7 +77,7 @@ export function PhotoGrid({
           <Pressable style={styles.emptySlot}>
             <FontAwesome6 name="camera" size={36} color={colors.gray[400]} />
             <Text style={styles.emptyText}>Tap to capture</Text>
-            <Text style={styles.emptySubtext}>Today: {getPositionLabel()}</Text>
+            <Text style={styles.emptySubtext}>Today: {positionLabel}</Text>
           </Pressable>
         )}
       </Animated.View>
