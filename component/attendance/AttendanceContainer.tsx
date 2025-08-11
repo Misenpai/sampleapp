@@ -260,6 +260,7 @@ export function AttendanceContainer() {
                 photos={photos}
                 audioRecording={audioRecording}
                 onTakePhotos={() => {
+                  console.log('Starting photo capture process');
                   // Generate new photo position when starting to take photos
                   const { generateNewPhotoPosition } = useAttendanceStore.getState();
                   generateNewPhotoPosition();

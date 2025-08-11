@@ -142,9 +142,9 @@ export function SelfieInstructions({ position, photoNumber, totalPhotos }: Selfi
       case 'front':
         return 'Hold phone straight\nLook directly at camera';
       case 'left':
-        return 'Turn your head left\nShow left side of face';
+        return 'Turn your head right\nShow left side of face';
       case 'right':
-        return 'Turn your head right\nShow right side of face';
+        return 'Turn your head left\nShow right side of face';
       default:
         return '';
     }

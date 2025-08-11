@@ -1,6 +1,10 @@
+// component/profile/ProfileContainer.tsx
+import { colors } from '@/constants/colors';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useProfile } from '../../hooks/useProfile';
+import { AttendanceCalendar } from './AttendanceCalendar';
 import { LocationDropdown } from './LocationDropdown';
 import { LogoutButton } from './LogoutButton';
 import { ProfileField } from './ProfileFieldProfile';
@@ -8,6 +12,7 @@ import { ProfileField } from './ProfileFieldProfile';
 export const ProfileContainer: React.FC = () => {
   const { profile, updating, updateLocation } = useProfile();
   const [selectedLocation, setSelectedLocation] = useState(profile?.location || 'all');
+  const [showCalendar, setShowCalendar] = useState(false);
 
   React.useEffect(() => {
     if (profile?.location) {
@@ -43,6 +48,37 @@ export const ProfileContainer: React.FC = () => {
           <Text style={styles.welcomeText}>Welcome back!</Text>
           <Text style={styles.usernameText}>{profile.username}</Text>
         </View>
+
+        {/* Quick Stats Card */}
+        <TouchableOpacity 
+          style={styles.attendanceCard}
+          onPress={() => setShowCalendar(!showCalendar)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.attendanceCardHeader}>
+            <View style={styles.attendanceCardLeft}>
+              <FontAwesome6 name="calendar-days" size={24} color={colors.primary[500]} />
+              <View style={styles.attendanceCardTextContainer}>
+                <Text style={styles.attendanceCardTitle}>Attendance Tracker</Text>
+                <Text style={styles.attendanceCardSubtitle}>
+                  Tap to {showCalendar ? 'hide' : 'view'} your attendance history
+                </Text>
+              </View>
+            </View>
+            <FontAwesome6 
+              name={showCalendar ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color={colors.gray[500]} 
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* Attendance Calendar Section */}
+        {showCalendar && (
+          <View style={styles.calendarSection}>
+            <AttendanceCalendar empId={profile.empId} />
+          </View>
+        )}
 
         {/* Profile Fields Card */}
         <View style={styles.card}>
@@ -129,6 +165,47 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#1e293b',
+  },
+  attendanceCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.primary[100],
+  },
+  attendanceCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  attendanceCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  attendanceCardTextContainer: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  attendanceCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  attendanceCardSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  calendarSection: {
+    marginTop: -10,
+    marginBottom: 20,
   },
   card: {
     backgroundColor: 'white',

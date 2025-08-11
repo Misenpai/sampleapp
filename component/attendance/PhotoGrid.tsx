@@ -1,9 +1,8 @@
 import { colors } from "@/constants/colors";
-import { useAttendanceStore } from "@/store/attendanceStore";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { CameraCapturedPicture } from "expo-camera";
 import { Image } from "expo-image";
-import React, { useMemo } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
@@ -18,46 +17,12 @@ export function PhotoGrid({
   onRetakePhoto,
   totalPhotos,
 }: PhotoGridProps) {
-  // Get the photo position from the store - use selector to avoid unnecessary re-renders
-  const todayPosition = useAttendanceStore((state) => state.currentSessionPhotoPosition) || 'front';
-  
-  const positionLabel = useMemo(() => {
-    switch (todayPosition) {
-      case 'front':
-        return 'Front Face';
-      case 'left':
-        return 'Left Profile';
-      case 'right':
-        return 'Right Profile';
-      default:
-        return 'Front Face';
-    }
-  }, [todayPosition]);
-
-  const positionIcon = useMemo(() => {
-    switch (todayPosition) {
-      case 'front':
-        return 'user';
-      case 'left':
-        return 'angle-left';
-      case 'right':
-        return 'angle-right';
-      default:
-        return 'user';
-    }
-  }, [todayPosition]);
-
   return (
     <View style={styles.container}>
       <Animated.View 
         entering={ZoomIn}
         style={styles.singlePhotoContainer}
       >
-        <View style={styles.photoPositionBadge}>
-          <FontAwesome6 name={positionIcon} size={14} color={colors.white} />
-          <Text style={styles.positionLabel}>{positionLabel}</Text>
-        </View>
-        
         {photos[0] ? (
           <View style={styles.photoWrapper}>
             <Image
@@ -77,7 +42,6 @@ export function PhotoGrid({
           <Pressable style={styles.emptySlot}>
             <FontAwesome6 name="camera" size={36} color={colors.gray[400]} />
             <Text style={styles.emptyText}>Tap to capture</Text>
-            <Text style={styles.emptySubtext}>Today: {positionLabel}</Text>
           </Pressable>
         )}
       </Animated.View>
@@ -94,25 +58,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 250,
     position: "relative",
-  },
-  photoPositionBadge: {
-    position: "absolute",
-    top: -10,
-    left: "50%",
-    transform: [{ translateX: -60 }],
-    backgroundColor: colors.primary[500],
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    zIndex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  positionLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: colors.white,
   },
   photoWrapper: {
     position: "relative",
@@ -157,10 +102,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.gray[500],
     fontWeight: "600",
-  },
-  emptySubtext: {
-    marginTop: 4,
-    fontSize: 12,
-    color: colors.gray[400],
   },
 });

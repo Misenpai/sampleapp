@@ -114,8 +114,8 @@ export function CameraView({
             {currentPosition === 'front' 
               ? '📷 Look straight at camera'
               : currentPosition === 'left'
-              ? '👈 Turn head to your left'
-              : '👉 Turn head to your right'}
+              ? '👉 Turn head to your right'
+              : '👈 Turn head to your left'}
           </Text>
         </View>
 
