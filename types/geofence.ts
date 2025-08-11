@@ -1,4 +1,5 @@
 import { MapShapeType } from "react-native-leaflet-view";
+import { AudioRecording } from "./attendance";
 
 export interface LatLng {
   lat: number;
@@ -39,9 +40,6 @@ export interface MapMarker {
 export interface Photo {
   uri: string;
   name?: string;
-}
-export interface AudioRecording {
-  uri: string;
 }
 
 export interface AttendanceProps {

@@ -2,7 +2,7 @@ import { colors } from '@/constants/colors';
 import { audioRecorderStyles } from '@/constants/style';
 import { useAudio } from '@/hooks/useAudio';
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   ReduceMotion,
@@ -78,57 +78,7 @@ export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProp
     };
   });
 
-  // Effect to handle recording state changes
-  useEffect(() => {
-    if (audio.recorderState.isRecording && !waveformRef.current.isRecording) {
-      // Recording started
-      waveformRef.current.isRecording = true;
-      startWaveformRecording();
-    } else if (!audio.recorderState.isRecording && waveformRef.current.isRecording) {
-      // Recording stopped
-      waveformRef.current.isRecording = false;
-      stopWaveformRecording();
-      if (audio.currentRecording) {
-        setHasRecording(true);
-        // Store the original waveform data for playback
-        waveformRef.current.originalData = [...waveformRef.current.data];
-      }
-    }
-  }, [audio.recorderState.isRecording]);
-
-  // Effect to handle playback state changes
-  useEffect(() => {
-    if (audio.isPlaying && hasRecording) {
-      startWaveformPlayback();
-    } else {
-      stopWaveformPlayback();
-    }
-  }, [audio.isPlaying, hasRecording]);
-
-  // Effect to track recording duration
-  useEffect(() => {
-    let durationInterval: number | null = null;
-    
-    if (audio.recorderState.isRecording) {
-      const startTime = Date.now();
-      durationInterval = setInterval(() => {
-        const elapsed = (Date.now() - startTime) / 1000;
-        setRecordingDuration(elapsed);
-      }, 100);
-    } else {
-      if (durationInterval) {
-        clearInterval(durationInterval);
-      }
-    }
-
-    return () => {
-      if (durationInterval) {
-        clearInterval(durationInterval);
-      }
-    };
-  }, [audio.recorderState.isRecording]);
-
-  const startWaveformRecording = () => {
+  const startWaveformRecording = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -147,16 +97,16 @@ export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProp
         width.value = width.value + 12;
       }
     }, 100);
-  };
+  }, [width]);
 
-  const stopWaveformRecording = () => {
+  const stopWaveformRecording = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-  };
+  }, []);
 
-  const startWaveformPlayback = () => {
+  const startWaveformPlayback = useCallback(() => {
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
     }
@@ -197,14 +147,64 @@ export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProp
         }
       }
     }, 50); // More frequent updates for smoother playback visualization
-  };
+  }, [audio.isPlaying, width]);
 
-  const stopWaveformPlayback = () => {
+  const stopWaveformPlayback = useCallback(() => {
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
       playbackIntervalRef.current = null;
     }
-  };
+  }, []);
+
+  // Effect to handle recording state changes
+  useEffect(() => {
+    if (audio.recorderState.isRecording && !waveformRef.current.isRecording) {
+      // Recording started
+      waveformRef.current.isRecording = true;
+      startWaveformRecording();
+    } else if (!audio.recorderState.isRecording && waveformRef.current.isRecording) {
+      // Recording stopped
+      waveformRef.current.isRecording = false;
+      stopWaveformRecording();
+      if (audio.currentRecording) {
+        setHasRecording(true);
+        // Store the original waveform data for playback
+        waveformRef.current.originalData = [...waveformRef.current.data];
+      }
+    }
+  }, [audio.recorderState.isRecording, audio.currentRecording, startWaveformRecording, stopWaveformRecording]);
+
+  // Effect to handle playback state changes
+  useEffect(() => {
+    if (audio.isPlaying && hasRecording) {
+      startWaveformPlayback();
+    } else {
+      stopWaveformPlayback();
+    }
+  }, [audio.isPlaying, hasRecording, startWaveformPlayback, stopWaveformPlayback]);
+
+  // Effect to track recording duration
+  useEffect(() => {
+    let durationInterval: number | null = null;
+    
+    if (audio.recorderState.isRecording) {
+      const startTime = Date.now();
+      durationInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        setRecordingDuration(elapsed);
+      }, 100);
+    } else {
+      if (durationInterval) {
+        clearInterval(durationInterval);
+      }
+    }
+
+    return () => {
+      if (durationInterval) {
+        clearInterval(durationInterval);
+      }
+    };
+  }, [audio.recorderState.isRecording]);
 
   // Cleanup intervals on unmount
   useEffect(() => {
@@ -238,10 +238,20 @@ export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProp
   const handleStopRecording = async () => {
     try {
       const recording = await audio.stopRecording();
-      // The recording state will be handled by the useEffect above
+      if (recording) {
+        // Add duration to the recording
+        const recordingWithDuration: AudioRecording = {
+          ...recording,
+          duration: Math.floor(recordingDuration) // Use the tracked duration
+        };
+        audio.setCurrentRecording(recordingWithDuration);
+        // The recording state will be handled by the useEffect above
+        return recordingWithDuration;
+      }
     } catch (error) {
       console.log('Recording stop error:', error);
     }
+    return null;
   };
 
   const handlePlayRecording = async () => {
@@ -275,7 +285,12 @@ export function AudioRecorder({ onBack, onRecordingComplete }: AudioRecorderProp
 
   const handleComplete = () => {
     if (audio.currentRecording) {
-      onRecordingComplete(audio.currentRecording);
+      // Pass recording with duration
+      const recordingWithDuration: AudioRecording = {
+        ...audio.currentRecording,
+        duration: Math.floor(recordingDuration)
+      };
+      onRecordingComplete(recordingWithDuration);
     }
   };
 

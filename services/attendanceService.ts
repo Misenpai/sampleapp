@@ -1,4 +1,5 @@
-
+// services/attendanceService.ts
+import { useAttendanceStore } from "@/store/attendanceStore";
 import { AttendanceProps } from "@/types/geofence";
 import axios from "axios";
 
@@ -23,6 +24,11 @@ export const uploadAttendanceData = async ({
     form.append("timestamp", uploadTimestamp.toString());
     if (location) form.append("location", location);
 
+    // Get the current photo position from the store
+    const currentPhotoPosition = useAttendanceStore.getState().currentSessionPhotoPosition || 'front';
+    form.append("photoType", currentPhotoPosition);
+
+    // Add photos
     photos.forEach((p, idx) => {
       if (!p.uri) return;
       form.append("photos", {
@@ -32,12 +38,18 @@ export const uploadAttendanceData = async ({
       } as any);
     });
 
+    // Add audio with duration if available
     if (audioRecording?.uri) {
       form.append("audio", {
         uri: audioRecording.uri,
         type: "audio/mp4",
         name: "audio_rec.m4a",
       } as any);
+      
+      // Add audio duration if available
+      if (audioRecording.duration) {
+        form.append("audioDuration", audioRecording.duration.toString());
+      }
     }
 
     const { data } = await axios.post(`${API_BASE}/attendance`, form, {

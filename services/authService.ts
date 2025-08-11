@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
@@ -24,8 +23,11 @@ const apiClient = axios.create({
   }
 });
 
+
 export const signupUser = async (empId: string, username: string, email: string, password: string): Promise<AuthResponse> => {
   try {
+        const signupUrl = `${API_BASE}/signup`;
+    console.log('Attempting signup to URL:', signupUrl);
     console.log('Attempting signup with:', { empId, username, email, apiBase: API_BASE });
     
     const { data } = await apiClient.post('/signup', {

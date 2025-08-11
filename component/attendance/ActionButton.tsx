@@ -44,6 +44,7 @@ export function ActionButtons({
   };
 
   const isComplete = photos.length === totalPhotos;
+  
 
   return (
     <View style={styles.container}>

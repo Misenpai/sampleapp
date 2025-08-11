@@ -1,22 +1,22 @@
 // component/profile/AttendanceCalendar.tsx
 import { colors } from '@/constants/colors';
 import {
-    AttendanceDate,
-    AttendanceStatistics,
-    getAttendanceCalendar,
-    getMarkedDates
+  AttendanceDate,
+  AttendanceStatistics,
+  getAttendanceCalendar,
+  getMarkedDates
 } from '@/services/attendanceCalendarService';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -134,6 +134,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
     const attendance = attendanceDates.find(
       a => a.date.split('T')[0] === selectedDate
     );
+
+    console.log(attendance)
 
     if (!attendance) {
       return (

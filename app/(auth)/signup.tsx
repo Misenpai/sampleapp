@@ -1,24 +1,24 @@
-import { useAuthStore } from "@/store/authStore";
 import { colors } from "@/constants/colors";
+import { useAuthStore } from "@/store/authStore";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
-  View,
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ScrollView,
-  Dimensions,
+  View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import Animated, { 
-  FadeInDown, 
-  FadeInUp 
+import Animated, {
+  FadeInDown,
+  FadeInUp
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
@@ -64,7 +64,7 @@ export default function SignupScreen() {
       return;
     }
 
-    await signUp(empId.trim(), username.trim(), email.trim().toLowerCase(), password);
+    await signUp(empId.trim(), username.trim(), email.trim().toLowerCase(), password.trim());
   };
 
   const handleSocialSignup = (provider: string) => {
