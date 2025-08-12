@@ -40,7 +40,6 @@ function SessionTimeIndicator() {
   const [currentSession, setCurrentSession] = useState<
     "FORENOON" | "AFTERNOON" | "OUTSIDE"
   >("OUTSIDE");
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const updateSession = () => {
@@ -59,8 +58,6 @@ function SessionTimeIndicator() {
       } else {
         setCurrentSession("OUTSIDE");
       }
-
-      setCurrentTime(now);
     };
 
     updateSession();
@@ -113,10 +110,32 @@ function SessionTimeIndicator() {
 function CheckoutButton({
   onCheckout,
   disabled,
+  isCheckedOut = false,
 }: {
   onCheckout: () => void;
   disabled: boolean;
+  isCheckedOut?: boolean;
 }) {
+  if (isCheckedOut) {
+    return (
+      <TouchableOpacity
+        style={[styles.checkoutButton, styles.buttonDisabled]}
+        disabled={true}
+        activeOpacity={1}
+      >
+        <LinearGradient
+          colors={[colors.gray[500], colors.gray[600]]}
+          style={styles.gradientButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <FontAwesome6 name="check" size={20} color={colors.white} />
+          <Text style={styles.checkoutButtonText}>Done</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={[styles.checkoutButton, disabled && styles.buttonDisabled]}
@@ -147,16 +166,37 @@ function AttendanceStatusCard({ attendance }: { attendance: any }) {
     if (!attendance.isCheckedOut) return colors.warning;
     return attendance.attendanceType === "FULL_DAY"
       ? colors.success
-      : colors.info;
+      : colors.black;
   };
 
   const getStatusText = () => {
     if (!attendance.isCheckedOut) {
-      return `Checked in - ${attendance.sessionType} Session`;
+      const sessionText =
+        attendance.sessionType === "FORENOON"
+          ? "Forenoon"
+          : attendance.sessionType === "AFTERNOON"
+          ? "Afternoon"
+          : "Unknown";
+      return `Checked in - ${sessionText} Session`;
     }
     return `${
       attendance.attendanceType === "FULL_DAY" ? "Full Day" : "Half Day"
     } Completed`;
+  };
+
+  const formatTime = (timeString: string | null) => {
+    if (!timeString) return "Invalid Date";
+    try {
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return "Invalid Date";
+    }
   };
 
   return (
@@ -177,14 +217,14 @@ function AttendanceStatusCard({ attendance }: { attendance: any }) {
         <View style={styles.statusRow}>
           <Text style={styles.statusLabel}>Check-in:</Text>
           <Text style={styles.statusValue}>
-            {new Date(attendance.checkInTime).toLocaleTimeString()}
+            {formatTime(attendance.checkInTime)}
           </Text>
         </View>
         {attendance.checkOutTime && (
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Check-out:</Text>
             <Text style={styles.statusValue}>
-              {new Date(attendance.checkOutTime).toLocaleTimeString()}
+              {formatTime(attendance.checkOutTime)}
             </Text>
           </View>
         )}
@@ -300,8 +340,12 @@ function AttendanceMarkedCard({
         {todayRecord && <AttendanceStatusCard attendance={todayRecord} />}
 
         {/* Checkout Button */}
-        {todayRecord && !todayRecord.isCheckedOut && (
-          <CheckoutButton onCheckout={onCheckout} disabled={false} />
+        {todayRecord && (
+          <CheckoutButton
+            onCheckout={onCheckout}
+            disabled={false}
+            isCheckedOut={todayRecord.isCheckedOut}
+          />
         )}
 
         {devModeEnabled && (
@@ -338,14 +382,12 @@ export function HomeView({
   const attendanceRecords = useAttendanceStore(
     (state) => state.attendanceRecords
   );
-  const checkTodayAttendance = useAttendanceStore(
-    (state) => state.checkTodayAttendance
-  ); // Add this line
 
   const todayDateString = new Date().toISOString().split("T")[0];
   const todayRecord = attendanceRecords.find(
     (record) => record.date === todayDateString
   );
+
   useEffect(() => {
     const refreshAttendanceStatus = async () => {
       if (useAttendanceStore.getState().userId) {
@@ -379,18 +421,22 @@ export function HomeView({
             try {
               // Get current user from auth store
               const { userName } = useAuthStore.getState();
+
+              // Handle the undefined case properly
               if (!userName) {
                 Alert.alert("Error", "Please login to checkout");
                 return;
               }
 
-              // Call checkout API
+              // Call checkout API - now we know userName is not undefined
               const result = await checkoutAttendance(userName);
 
               if (result.success) {
                 Alert.alert("Success", "Checkout successful!");
-                // Refresh attendance data or update UI as needed
-                checkTodayAttendance(); // Refresh today's attendance status
+                // Refresh attendance data
+                await useAttendanceStore
+                  .getState()
+                  .fetchTodayAttendanceFromServer();
               } else {
                 Alert.alert("Error", result.error || "Checkout failed");
               }
@@ -407,6 +453,22 @@ export function HomeView({
   const toggleDevMode = () => {
     setDevModeEnabled(!devModeEnabled);
     if (devModeEnabled) setForceShowAttendance(false);
+  };
+
+  // Helper function to format time
+  const formatTime = (timeString: string | null) => {
+    if (!timeString) return "Invalid Date";
+    try {
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return "Invalid Date";
+    }
   };
 
   // Attendance Marked branch
@@ -457,43 +519,66 @@ export function HomeView({
           onCheckout={handleCheckout}
         />
 
-        {/* Today's Summary with actual store data */}
-        <Animated.View
-          entering={FadeInDown.delay(200).springify()}
-          style={styles.sectionCard}
-        >
-          <View style={styles.sectionHeader}>
-            <FontAwesome6
-              name="circle-info"
-              size={20}
-              color={colors.primary[500]}
-            />
-            <Text style={styles.sectionTitle}>Today&apos;s Summary</Text>
-          </View>
-          <Text style={styles.sectionDescription}>
-            Your attendance has been successfully recorded for today.
-            {devModeEnabled &&
-              " Developer mode is active - you can test marking attendance again."}
-          </Text>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <FontAwesome6 name="clock" size={16} color={colors.gray[500]} />
-              <Text style={styles.summaryText}>
-                Recorded at{" "}
-                {new Date(todayRecord.timestamp).toLocaleTimeString()}
-              </Text>
-            </View>
-            <View style={styles.summaryItem}>
+        {/* Today's Summary - Only show after checkout */}
+        {todayRecord.isCheckedOut && (
+          <Animated.View
+            entering={FadeInDown.delay(200).springify()}
+            style={styles.sectionCard}
+          >
+            <View style={styles.sectionHeader}>
               <FontAwesome6
-                name="location-dot"
-                size={16}
-                color={colors.gray[500]}
+                name="circle-info"
+                size={20}
+                color={colors.primary[500]}
               />
-              <Text style={styles.summaryText}>{todayRecord.location}</Text>
+              <Text style={styles.sectionTitle}>Today&apos;s Summary</Text>
             </View>
-          </View>
-        </Animated.View>
+            <Text style={styles.sectionDescription}>
+              Your attendance has been successfully recorded and completed for
+              today.
+              {devModeEnabled &&
+                " Developer mode is active - you can test marking attendance again."}
+            </Text>
+
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <FontAwesome6 name="clock" size={16} color={colors.gray[500]} />
+                <Text style={styles.summaryText}>
+                  Checked in at {formatTime(todayRecord.checkInTime ?? null)}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <FontAwesome6 name="clock" size={16} color={colors.gray[500]} />
+                <Text style={styles.summaryText}>
+                  Checked out at {formatTime(todayRecord.checkOutTime ?? null)}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <FontAwesome6
+                  name="location-dot"
+                  size={16}
+                  color={colors.gray[500]}
+                />
+                <Text style={styles.summaryText}>
+                  {todayRecord.takenLocation || "Location not recorded"}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <FontAwesome6
+                  name="calendar"
+                  size={16}
+                  color={colors.gray[500]}
+                />
+                <Text style={styles.summaryText}>
+                  {todayRecord.attendanceType === "FULL_DAY"
+                    ? "Full Day"
+                    : "Half Day"}{" "}
+                  attendance
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
       </ScrollView>
     );
   }

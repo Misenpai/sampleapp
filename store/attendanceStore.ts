@@ -12,6 +12,12 @@ interface AttendanceRecord {
   location: string;
   photosCount: number;
   hasAudio: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
+  sessionType?: string;
+  attendanceType?: string;
+  isCheckedOut?: boolean;
+  takenLocation?: string;
 }
 
 export type PhotoPosition = "front" | "left" | "right";
@@ -48,8 +54,6 @@ interface AttendanceState {
   generateNewPhotoPosition: () => PhotoPosition;
   resetAll: () => void;
   clearUserId: () => void;
-
-  // ✅ Missing method added
   fetchTodayAttendanceFromServer: () => Promise<boolean>;
 }
 
@@ -69,7 +73,7 @@ export const useAttendanceStore = create<AttendanceState>()(
     (set, get) => ({
       // Initial state
       userId: null,
-      isLoadingUserId: false, // Start with false, will be set to true when needed
+      isLoadingUserId: false,
       isInitialized: false,
       photos: [],
       audioRecording: null,
@@ -94,12 +98,12 @@ export const useAttendanceStore = create<AttendanceState>()(
           if (userData && userData.isLoggedIn) {
             // User is logged in, set the userId (which is the username)
             set({
-              userId: userData.name, // This is the username
+              userId: userData.name,
               isLoadingUserId: false,
               isInitialized: true,
             });
 
-            // IMPORTANT: Check server attendance first, then local
+            // Check server attendance first, then local
             const serverAttendanceExists =
               await get().fetchTodayAttendanceFromServer();
             if (!serverAttendanceExists) {
@@ -113,7 +117,7 @@ export const useAttendanceStore = create<AttendanceState>()(
               userId: null,
               isLoadingUserId: false,
               isInitialized: true,
-              todayAttendanceMarked: false, // Ensure false for non-logged users
+              todayAttendanceMarked: false,
             });
           }
         } catch (error) {
@@ -122,12 +126,11 @@ export const useAttendanceStore = create<AttendanceState>()(
             userId: null,
             isLoadingUserId: false,
             isInitialized: true,
-            todayAttendanceMarked: false, // Ensure false on error
+            todayAttendanceMarked: false,
           });
         }
       },
 
-      // New method to set userId directly (called from auth store after login)
       setUserId: (userId) => {
         set({
           userId,
@@ -140,7 +143,6 @@ export const useAttendanceStore = create<AttendanceState>()(
 
         // Check attendance after setting userId
         if (userId) {
-          // Use setTimeout to ensure state is updated before checking
           setTimeout(async () => {
             const serverAttendanceExists =
               await get().fetchTodayAttendanceFromServer();
@@ -152,7 +154,6 @@ export const useAttendanceStore = create<AttendanceState>()(
         }
       },
 
-      // Clear userId on logout
       clearUserId: () => {
         set({
           userId: null,
@@ -241,6 +242,13 @@ export const useAttendanceStore = create<AttendanceState>()(
               location: data.data.takenLocation || "Unknown",
               photosCount: data.data.photos?.length || 0,
               hasAudio: data.data.audio?.length > 0,
+              // Add server-specific data
+              checkInTime: data.data.checkInTime,
+              checkOutTime: data.data.checkOutTime,
+              sessionType: data.data.sessionType,
+              attendanceType: data.data.attendanceType,
+              isCheckedOut: data.data.isCheckedOut,
+              takenLocation: data.data.takenLocation,
             };
 
             // Update local records with server data
