@@ -1,10 +1,11 @@
 // store/authStore.ts
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { loginUser, signupUser } from '../services/authService';
 import { clearUserData, getUserData, storeUserData } from '../services/UserId';
+import { useAttendanceStore } from './attendanceStore';
 
 interface AuthState {
   // State
@@ -44,6 +45,9 @@ export const useAuthStore = create<AuthState>()(
               isInitialized: true,
               isLoading: false,
             });
+            
+            // Sync with attendance store
+            useAttendanceStore.getState().setUserId(userData.name);
           } else {
             set({
               isInitialized: true,
@@ -76,12 +80,16 @@ export const useAuthStore = create<AuthState>()(
             };
             
             await storeUserData(userData);
+            
             set({
               session: result.user.id,
               userName: result.user.username,
               userId: result.user.id,
               isLoading: false,
             });
+            
+            // IMPORTANT: Sync with attendance store after successful login
+            useAttendanceStore.getState().setUserId(result.user.username);
             
             Alert.alert("Success", "Logged in successfully!");
           } else {
@@ -112,12 +120,16 @@ export const useAuthStore = create<AuthState>()(
             };
             
             await storeUserData(userData);
+            
             set({
               session: result.user.id,
               userName: result.user.username,
               userId: result.user.id,
               isLoading: false,
             });
+            
+            // IMPORTANT: Sync with attendance store after successful signup
+            useAttendanceStore.getState().setUserId(result.user.username);
             
             Alert.alert("Success", "Account created successfully!");
           } else {
@@ -135,11 +147,17 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           await clearUserData();
+          
+          // Clear auth state
           set({
             session: null,
             userName: null,
             userId: null,
           });
+          
+          // IMPORTANT: Clear attendance store as well
+          useAttendanceStore.getState().clearUserId();
+          
         } catch (error) {
           console.error("Error signing out:", error);
         }

@@ -5,6 +5,7 @@ import { Alert, FlatList, ListRenderItem } from "react-native";
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence } from "@/hooks/useGeofence";
 import { useAttendanceStore } from "@/store/attendanceStore";
+import { useAuthStore } from "@/store/authStore";
 
 import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
 import { attendanceContainerStyles, globalStyles } from "@/constants/style";
@@ -47,6 +48,9 @@ export function AttendanceContainer() {
     checkTodayAttendance,
   } = useAttendanceStore();
 
+  // Get auth state to check if user is logged in
+  const { session, userName } = useAuthStore();
+
   const camera = useCamera();
   const { selectedGeofenceId, selectedLocationLabel: locationStoreLabel } =
     useLocationStore();
@@ -55,12 +59,12 @@ export function AttendanceContainer() {
   const [isMapTouched, setIsMapTouched] = useState(false);
   const geofence = useGeofence(selectedGeofenceId);
 
-  // Initialize user ID on mount
+  // Initialize user ID only if user is logged in
   useEffect(() => {
-    if (!isInitialized) {
+    if (session && userName && !isInitialized) {
       initializeUserId();
     }
-  }, [isInitialized, initializeUserId]);
+  }, [session, userName, isInitialized, initializeUserId]);
 
   // Use useCallback to memoize the function
   const updateSelectedLocationLabel = useCallback(
@@ -131,7 +135,12 @@ export function AttendanceContainer() {
 
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
-    if (!userId) return;
+    
+    // Double-check userId exists before uploading
+    if (!userId) {
+      Alert.alert("Error", "Please login to mark attendance");
+      return;
+    }
 
     setUploading(true);
     try {
@@ -156,7 +165,8 @@ export function AttendanceContainer() {
       } else {
         Alert.alert("Error", result.error ?? "Upload failed");
       }
-    } catch {
+    } catch (error) {
+      console.error("Upload error:", error);
       Alert.alert("Error", "Upload error");
     } finally {
       setUploading(false);
@@ -188,11 +198,22 @@ export function AttendanceContainer() {
     ]
   );
 
-  if (isLoadingUserId) return <LoadingScreen text="Loading user..." />;
+  // Check if we're still loading
+  if (isLoadingUserId) return <LoadingScreen text="Loading..." />;
+  
+  // Check if user is not logged in (after initialization)
+  if (isInitialized && !userId) {
+    // This shouldn't happen as the auth gate should redirect to login
+    // But just in case, we show a message
+    return <LoadingScreen text="Please login to continue" subtext="Redirecting..." />;
+  }
+
   if (!camera.permission?.granted)
     return <PermissionScreen onRequestPermission={camera.requestPermission} />;
+  
   if (uploading)
     return <LoadingScreen text="Uploading..." subtext="Please wait" />;
+  
   if (showExpandedMap)
     return (
       <ExpandedMapView
@@ -282,7 +303,7 @@ export function AttendanceContainer() {
                 uploading={uploading}
                 totalPhotos={TOTAL_PHOTOS}
                 selectedLocationLabel={selectedLocationLabel}
-                todayAttendanceMarked={todayAttendanceMarked} // Add this line
+                todayAttendanceMarked={todayAttendanceMarked}
               />
             );
           default:

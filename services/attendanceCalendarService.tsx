@@ -13,19 +13,24 @@ export interface AttendanceDate {
   dayOfWeek: number;
   weekOfYear: number;
   isPresent: boolean;
+  attendanceType?: 'FULL_DAY' | 'HALF_DAY' | null; // Added this field
   attendance: {
     takenLocation: string | null;
     checkInTime: string;
     checkOutTime: string | null;
+    sessionType?: 'FORENOON' | 'AFTERNOON'; // Added this field
+    attendanceType?: 'FULL_DAY' | 'HALF_DAY' | null; // Added this field
+    isCheckedOut?: boolean; // Added this field
   };
 }
 
 export interface AttendanceStatistics {
   totalDays: number;
+  totalFullDays: number; // Added
+  totalHalfDays: number; // Added
   currentStreak: number;
   longestStreak: number;
   lastAttendance: string | null;
-  weeklyAverage: number;
 }
 
 export interface AttendanceCalendarResponse {
@@ -135,24 +140,49 @@ export const formatAttendanceDate = (date: string): string => {
   });
 };
 
-// Helper function to get marked dates for calendar component
+// Updated helper function to get marked dates with half/full day colors
 export const getMarkedDates = (attendanceDates: AttendanceDate[]) => {
   const marked: { [key: string]: any } = {};
 
   attendanceDates.forEach((item) => {
-    const dateStr = item.date.split("T")[0]; // Format: YYYY-MM-DD
+    const dateStr = item.date.split("T")[0];
+    
+    // Determine the color based on attendance type
+    let dotColor = "#9CA3AF"; // Gray for not checked out
+    let backgroundColor = "#F3F4F6"; // Light gray background
+    let textColor = "#1F2937"; // Dark text
+    
+    if (item.attendance) {
+      if (!item.attendance.isCheckedOut) {
+        // In progress (not checked out)
+        dotColor = "#F59E0B"; // Warning color (orange)
+        backgroundColor = "#FEF3C7"; // Light orange
+        textColor = "#92400E";
+      } else if (item.attendance.attendanceType === 'FULL_DAY') {
+        // Full day
+        dotColor = "#10B981"; // Success color (green)
+        backgroundColor = "#D1FAE5"; // Light green
+        textColor = "#065F46";
+      } else if (item.attendance.attendanceType === 'HALF_DAY') {
+        // Half day
+        dotColor = "#3B82F6"; // Info color (blue)
+        backgroundColor = "#DBEAFE"; // Light blue
+        textColor = "#1E40AF";
+      }
+    }
+
     marked[dateStr] = {
       marked: true,
-      dotColor: "#10B981",
+      dotColor: dotColor,
       selected: false,
-      selectedColor: "#10B981",
+      selectedColor: dotColor,
       customStyles: {
         container: {
-          backgroundColor: "#10B98120",
+          backgroundColor: backgroundColor,
           borderRadius: 6,
         },
         text: {
-          color: "#10B981",
+          color: textColor,
           fontWeight: "bold",
         },
       },
@@ -162,11 +192,26 @@ export const getMarkedDates = (attendanceDates: AttendanceDate[]) => {
   return marked;
 };
 
-// Helper function to calculate attendance percentage
+// Helper function to calculate attendance percentage with half days
 export const calculateAttendancePercentage = (
-  totalDays: number,
+  totalFullDays: number,
+  totalHalfDays: number,
   totalWorkingDays: number
 ): number => {
   if (totalWorkingDays === 0) return 0;
-  return Math.round((totalDays / totalWorkingDays) * 100);
+  const effectiveDays = totalFullDays + (totalHalfDays * 0.5);
+  return Math.round((effectiveDays / totalWorkingDays) * 100);
+};
+
+// New helper function to get session time label
+export const getSessionTimeLabel = (sessionType: 'FORENOON' | 'AFTERNOON'): string => {
+  return sessionType === 'FORENOON' 
+    ? 'Forenoon (9:30 AM - 1:00 PM)' 
+    : 'Afternoon (1:00 PM - 5:30 PM)';
+};
+
+// New helper function to get attendance type label
+export const getAttendanceTypeLabel = (attendanceType: 'FULL_DAY' | 'HALF_DAY' | null): string => {
+  if (!attendanceType) return 'In Progress';
+  return attendanceType === 'FULL_DAY' ? 'Full Day' : 'Half Day';
 };

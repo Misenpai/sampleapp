@@ -12,7 +12,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,8 +19,6 @@ import {
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 interface AttendanceCalendarProps {
   empId: string;
@@ -90,7 +87,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
               <View style={styles.statIconContainer}>
                 <FontAwesome6 name="calendar-check" size={24} color={colors.white} />
               </View>
-              <Text style={styles.statValue}>{statistics.totalDays}</Text>
+              <Text style={styles.statValue}>{statistics.totalDays.toFixed(1)}</Text>
               <Text style={styles.statLabel}>Total Days</Text>
             </View>
 
@@ -98,20 +95,20 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
 
             <View style={styles.statItem}>
               <View style={styles.statIconContainer}>
-                <FontAwesome6 name="fire" size={24} color={colors.white} />
+                <FontAwesome6 name="star" size={24} color={colors.white} />
               </View>
-              <Text style={styles.statValue}>{statistics.currentStreak}</Text>
-              <Text style={styles.statLabel}>Current Streak</Text>
+              <Text style={styles.statValue}>{statistics.totalFullDays || 0}</Text>
+              <Text style={styles.statLabel}>Full Days</Text>
             </View>
 
             <View style={styles.statDivider} />
 
             <View style={styles.statItem}>
               <View style={styles.statIconContainer}>
-                <FontAwesome6 name="trophy" size={24} color={colors.white} />
+                <FontAwesome6 name="star-half-stroke" size={24} color={colors.white} />
               </View>
-              <Text style={styles.statValue}>{statistics.longestStreak}</Text>
-              <Text style={styles.statLabel}>Best Streak</Text>
+              <Text style={styles.statValue}>{statistics.totalHalfDays || 0}</Text>
+              <Text style={styles.statLabel}>Half Days</Text>
             </View>
           </View>
 
@@ -135,8 +132,6 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
       a => a.date.split('T')[0] === selectedDate
     );
 
-    console.log(attendance)
-
     if (!attendance) {
       return (
         <Animated.View 
@@ -152,6 +147,34 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
       );
     }
 
+    // Determine attendance status
+    const getAttendanceStatus = () => {
+      if (!attendance.attendance.isCheckedOut) {
+        return {
+          label: 'In Progress',
+          color: colors.warning,
+          icon: 'clock',
+          backgroundColor: colors.warning + '20'
+        };
+      }
+      if (attendance.attendance.attendanceType === 'FULL_DAY') {
+        return {
+          label: 'Full Day',
+          color: colors.success,
+          icon: 'circle-check',
+          backgroundColor: colors.success + '20'
+        };
+      }
+      return {
+        label: 'Half Day',
+        color: colors.info,
+        icon: 'circle-half-stroke',
+        backgroundColor: colors.info + '20'
+      };
+    };
+
+    const status = getAttendanceStatus();
+
     return (
       <Animated.View 
         entering={FadeInUp.duration(300)}
@@ -166,7 +189,25 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
           })}
         </Text>
         
+        {/* Attendance Type Badge */}
+        <View style={[styles.attendanceBadge, { backgroundColor: status.backgroundColor, borderColor: status.color }]}>
+          <FontAwesome6 name={status.icon} size={18} color={status.color} />
+          <Text style={[styles.attendanceBadgeText, { color: status.color }]}>
+            {status.label}
+          </Text>
+        </View>
+        
         <View style={styles.attendanceDetailsContainer}>
+          {attendance.attendance.sessionType && (
+            <View style={styles.attendanceDetailRow}>
+              <FontAwesome6 name="business-time" size={16} color={colors.primary[500]} />
+              <Text style={styles.attendanceDetailLabel}>Session:</Text>
+              <Text style={styles.attendanceDetailValue}>
+                {attendance.attendance.sessionType}
+              </Text>
+            </View>
+          )}
+          
           <View style={styles.attendanceDetailRow}>
             <FontAwesome6 name="location-dot" size={16} color={colors.primary[500]} />
             <Text style={styles.attendanceDetailLabel}>Location:</Text>
@@ -176,7 +217,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
           </View>
           
           <View style={styles.attendanceDetailRow}>
-            <FontAwesome6 name="clock" size={16} color={colors.primary[500]} />
+            <FontAwesome6 name="right-to-bracket" size={16} color={colors.primary[500]} />
             <Text style={styles.attendanceDetailLabel}>Check-in:</Text>
             <Text style={styles.attendanceDetailValue}>
               {new Date(attendance.attendance.checkInTime).toLocaleTimeString()}
@@ -257,15 +298,19 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.legendText}>Present</Text>
+            <Text style={styles.legendText}>Full Day</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
+            <Text style={styles.legendText}>Half Day</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+            <Text style={styles.legendText}>In Progress</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.gray[300] }]} />
             <Text style={styles.legendText}>Absent</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.primary[500] }]} />
-            <Text style={styles.legendText}>Selected</Text>
           </View>
         </View>
       </View>
@@ -389,6 +434,21 @@ const styles = StyleSheet.create({
     color: colors.gray[800],
     marginBottom: 16,
   },
+  attendanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  attendanceBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   noAttendanceContainer: {
     alignItems: 'center',
     paddingVertical: 20,
@@ -437,11 +497,14 @@ const styles = StyleSheet.create({
   legendItems: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    minWidth: '45%',
   },
   legendDot: {
     width: 12,

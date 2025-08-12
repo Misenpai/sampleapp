@@ -1,21 +1,20 @@
 // store/attendanceStore.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CameraCapturedPicture } from 'expo-camera';
-import { Alert } from 'react-native';
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import getOrCreateUserId from '../services/UserId';
-import { AudioRecording, ViewMode } from '../types/attendance';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CameraCapturedPicture } from "expo-camera";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { getUserData } from "../services/UserId";
+import { AudioRecording, ViewMode } from "../types/attendance";
 
 interface AttendanceRecord {
-  date: string; // YYYY-MM-DD format
+  date: string;
   timestamp: number;
   location: string;
   photosCount: number;
   hasAudio: boolean;
 }
 
-export type PhotoPosition = 'front' | 'left' | 'right';
+export type PhotoPosition = "front" | "left" | "right";
 
 interface AttendanceState {
   userId: string | null;
@@ -35,6 +34,7 @@ interface AttendanceState {
 
   // Actions
   initializeUserId: () => Promise<void>;
+  setUserId: (userId: string | null) => void;
   setPhotos: (photos: CameraCapturedPicture[]) => void;
   setAudioRecording: (recording: AudioRecording | null) => void;
   setCurrentView: (view: ViewMode) => void;
@@ -47,16 +47,19 @@ interface AttendanceState {
   getTodayPhotoPosition: () => PhotoPosition;
   generateNewPhotoPosition: () => PhotoPosition;
   resetAll: () => void;
+  clearUserId: () => void;
+
+  // ✅ Missing method added
+  fetchTodayAttendanceFromServer: () => Promise<boolean>;
 }
 
 const getTodayDateString = () => {
   const today = new Date();
-  return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+  return today.toISOString().split("T")[0];
 };
 
-// Generate a truly random position
 const generateRandomPhotoPosition = (): PhotoPosition => {
-  const positions: PhotoPosition[] = ['front', 'left', 'right'];
+  const positions: PhotoPosition[] = ["front", "left", "right"];
   const randomIndex = Math.floor(Math.random() * positions.length);
   return positions[randomIndex];
 };
@@ -66,16 +69,16 @@ export const useAttendanceStore = create<AttendanceState>()(
     (set, get) => ({
       // Initial state
       userId: null,
-      isLoadingUserId: true,
+      isLoadingUserId: false, // Start with false, will be set to true when needed
       isInitialized: false,
       photos: [],
       audioRecording: null,
-      currentView: 'home',
+      currentView: "home",
       uploading: false,
       currentPhotoIndex: 0,
       retakeMode: false,
       selectedLocationLabel: null,
-      TOTAL_PHOTOS: 1, // Changed from 3 to 1
+      TOTAL_PHOTOS: 1,
       attendanceRecords: [],
       todayAttendanceMarked: false,
       currentSessionPhotoPosition: null,
@@ -83,59 +86,123 @@ export const useAttendanceStore = create<AttendanceState>()(
       // Actions
       initializeUserId: async () => {
         try {
-          const id = await getOrCreateUserId();
-          if (!id) throw new Error("User ID null");
-          console.log(id);
-          set({ 
-            userId: id, 
+          set({ isLoadingUserId: true });
+
+          // Check if user is logged in first
+          const userData = await getUserData();
+
+          if (userData && userData.isLoggedIn) {
+            // User is logged in, set the userId (which is the username)
+            set({
+              userId: userData.name, // This is the username
+              isLoadingUserId: false,
+              isInitialized: true,
+            });
+
+            // IMPORTANT: Check server attendance first, then local
+            const serverAttendanceExists =
+              await get().fetchTodayAttendanceFromServer();
+            if (!serverAttendanceExists) {
+              // If no server attendance, double-check local records
+              const localCheck = get().checkTodayAttendance();
+              set({ todayAttendanceMarked: localCheck });
+            }
+          } else {
+            // User is not logged in, don't show error
+            set({
+              userId: null,
+              isLoadingUserId: false,
+              isInitialized: true,
+              todayAttendanceMarked: false, // Ensure false for non-logged users
+            });
+          }
+        } catch (error) {
+          console.error("Error initializing user ID:", error);
+          set({
+            userId: null,
             isLoadingUserId: false,
-            isInitialized: true 
-          });
-          
-          // Check today's attendance after initializing
-          const todayMarked = get().checkTodayAttendance();
-          set({ todayAttendanceMarked: todayMarked });
-        } catch {
-          Alert.alert("Error", "Failed to initialize user ID");
-          set({ 
-            isLoadingUserId: false,
-            isInitialized: true 
+            isInitialized: true,
+            todayAttendanceMarked: false, // Ensure false on error
           });
         }
       },
 
+      // New method to set userId directly (called from auth store after login)
+      setUserId: (userId) => {
+        set({
+          userId,
+          isInitialized: true,
+          isLoadingUserId: false,
+          // Reset attendance status for new user
+          todayAttendanceMarked: false,
+          attendanceRecords: [], // Clear previous user's records
+        });
+
+        // Check attendance after setting userId
+        if (userId) {
+          // Use setTimeout to ensure state is updated before checking
+          setTimeout(async () => {
+            const serverAttendanceExists =
+              await get().fetchTodayAttendanceFromServer();
+            if (!serverAttendanceExists) {
+              const localCheck = get().checkTodayAttendance();
+              set({ todayAttendanceMarked: localCheck });
+            }
+          }, 100);
+        }
+      },
+
+      // Clear userId on logout
+      clearUserId: () => {
+        set({
+          userId: null,
+          photos: [],
+          audioRecording: null,
+          currentView: "home",
+          currentPhotoIndex: 0,
+          retakeMode: false,
+          selectedLocationLabel: null,
+          currentSessionPhotoPosition: null,
+          todayAttendanceMarked: false,
+          attendanceRecords: [], // Clear all attendance records on logout
+        });
+      },
+
       setPhotos: (photos) => set({ photos }),
-      
+
       setAudioRecording: (recording) => set({ audioRecording: recording }),
-      
+
       setCurrentView: (view) => {
         const state = get();
-        
-        // Generate a new random position when starting camera for the first time in this session
-        // (not in retake mode and no position set yet)
-        if (view === 'camera' && !state.retakeMode && !state.currentSessionPhotoPosition) {
+
+        if (
+          view === "camera" &&
+          !state.retakeMode &&
+          !state.currentSessionPhotoPosition
+        ) {
           const newPosition = generateRandomPhotoPosition();
-          set({ 
+          set({
             currentView: view,
-            currentSessionPhotoPosition: newPosition 
+            currentSessionPhotoPosition: newPosition,
           });
         } else {
           set({ currentView: view });
         }
       },
-      
+
       setCurrentPhotoIndex: (index) => set({ currentPhotoIndex: index }),
-      
+
       setRetakeMode: (mode) => set({ retakeMode: mode }),
-      
-      setSelectedLocationLabel: (label) => set({ selectedLocationLabel: label }),
-      
+
+      setSelectedLocationLabel: (label) =>
+        set({ selectedLocationLabel: label }),
+
       setUploading: (uploading) => set({ uploading }),
 
       markAttendanceForToday: (location: string) => {
         const today = getTodayDateString();
         const state = get();
-        
+
         const newRecord: AttendanceRecord = {
           date: today,
           timestamp: Date.now(),
@@ -145,59 +212,120 @@ export const useAttendanceStore = create<AttendanceState>()(
         };
 
         const updatedRecords = [
-          ...state.attendanceRecords.filter(record => record.date !== today),
-          newRecord
+          ...state.attendanceRecords.filter((record) => record.date !== today),
+          newRecord,
         ];
 
-        set({ 
+        set({
           attendanceRecords: updatedRecords,
-          todayAttendanceMarked: true 
+          todayAttendanceMarked: true,
         });
+      },
+
+      fetchTodayAttendanceFromServer: async () => {
+        const state = get();
+        if (!state.userId) return false;
+
+        try {
+          const response = await fetch(
+            `${process.env.EXPO_PUBLIC_API_BASE}/attendance/today/${state.userId}`
+          );
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            // Server has attendance record for today
+            const today = getTodayDateString();
+            const serverRecord: AttendanceRecord = {
+              date: today,
+              timestamp: new Date(data.data.checkInTime).getTime(),
+              location: data.data.takenLocation || "Unknown",
+              photosCount: data.data.photos?.length || 0,
+              hasAudio: data.data.audio?.length > 0,
+            };
+
+            // Update local records with server data
+            const updatedRecords = [
+              ...state.attendanceRecords.filter(
+                (record) => record.date !== today
+              ),
+              serverRecord,
+            ];
+
+            set({
+              attendanceRecords: updatedRecords,
+              todayAttendanceMarked: true,
+            });
+
+            return true;
+          } else {
+            // No server record found, ensure local state is also false
+            const today = getTodayDateString();
+            const updatedRecords = state.attendanceRecords.filter(
+              (record) => record.date !== today
+            );
+
+            set({
+              attendanceRecords: updatedRecords,
+              todayAttendanceMarked: false,
+            });
+
+            return false;
+          }
+        } catch (error) {
+          console.error("Error checking server attendance:", error);
+          // On error, check local records as fallback
+          return state.checkTodayAttendance();
+        }
       },
 
       checkTodayAttendance: () => {
         const today = getTodayDateString();
         const state = get();
-        const todayRecord = state.attendanceRecords.find(record => record.date === today);
-        return !!todayRecord;
+        const todayRecord = state.attendanceRecords.find(
+          (record) => record.date === today
+        );
+        const isMarked = !!todayRecord;
+
+        // Update the state if it's different
+        if (state.todayAttendanceMarked !== isMarked) {
+          set({ todayAttendanceMarked: isMarked });
+        }
+
+        return isMarked;
       },
 
       getTodayPhotoPosition: () => {
         const state = get();
-        
-        // If we already have a position for this session, return it
-        // Don't set state here to avoid updates during render
+
         if (state.currentSessionPhotoPosition) {
           return state.currentSessionPhotoPosition;
         }
-        
-        // Return a default if not set yet (will be set when camera opens)
-        return 'front';
+
+        return "front";
       },
 
       generateNewPhotoPosition: () => {
-        // This can be called to explicitly generate a new position
         const position = generateRandomPhotoPosition();
         set({ currentSessionPhotoPosition: position });
         return position;
       },
-      
-      resetAll: () => set({
-        photos: [],
-        audioRecording: null,
-        currentPhotoIndex: 0,
-        currentView: 'home',
-        retakeMode: false,
-        selectedLocationLabel: null,
-        currentSessionPhotoPosition: null, // Reset the position for next attendance
-      }),
+
+      resetAll: () =>
+        set({
+          photos: [],
+          audioRecording: null,
+          currentPhotoIndex: 0,
+          currentView: "home",
+          retakeMode: false,
+          selectedLocationLabel: null,
+          currentSessionPhotoPosition: null,
+        }),
     }),
     {
-      name: 'attendance-storage',
+      name: "attendance-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         attendanceRecords: state.attendanceRecords,
-        // Don't persist currentSessionPhotoPosition - it should be fresh each session
       }),
     }
   )
