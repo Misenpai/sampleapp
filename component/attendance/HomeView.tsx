@@ -95,6 +95,7 @@ function SessionTimeIndicator() {
         {
           backgroundColor: getSessionColor() + "20",
           borderColor: getSessionColor(),
+          marginBottom: 20,
         },
       ]}
     >

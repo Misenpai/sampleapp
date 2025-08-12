@@ -6,15 +6,19 @@ import {
   getAttendanceCalendar,
   getMarkedDates
 } from '@/services/attendanceCalendarService';
+import { useAttendanceStore } from '@/store/attendanceStore'; // Add this import
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { useFocusEffect } from '@react-navigation/native'; // Add this import if using React Navigation
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react'; // Add useCallback
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -32,14 +36,16 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [markedDates, setMarkedDates] = useState<any>({});
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for manual refresh
 
-  useEffect(() => {
-    fetchAttendanceData();
-  }, [selectedYear, selectedMonth]);
+  // Subscribe to attendance store changes
+  const attendanceRecords = useAttendanceStore((state) => state.attendanceRecords);
+  const todayAttendanceMarked = useAttendanceStore((state) => state.todayAttendanceMarked);
 
-  const fetchAttendanceData = async () => {
+  const fetchAttendanceData = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
+      
       const response = await getAttendanceCalendar(empId, selectedYear, selectedMonth);
       
       if (response.success && response.data) {
@@ -53,9 +59,47 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
       console.error('Error fetching attendance:', error);
       Alert.alert('Error', 'Failed to load attendance data');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [empId, selectedYear, selectedMonth]);
+
+  // Initial load and month/year changes
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [fetchAttendanceData]);
+
+  // Listen to attendance records changes for real-time updates
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    
+    // Only refresh if we're viewing the current month and attendance was marked today
+    if (selectedMonth === currentMonth && selectedYear === currentYear) {
+      const todayRecord = attendanceRecords.find(record => record.date === today);
+      if (todayRecord || todayAttendanceMarked) {
+        // Small delay to ensure server has processed the data
+        const timeoutId = setTimeout(() => {
+          fetchAttendanceData(false); // Refresh without loading spinner
+        }, 1000);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [attendanceRecords, todayAttendanceMarked, selectedMonth, selectedYear, fetchAttendanceData]);
+
+  // Add focus effect to refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchAttendanceData(false); // Refresh data when screen comes into focus
+    }, [fetchAttendanceData])
+  );
+
+  // Manual refresh function
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+    fetchAttendanceData(true);
+  }, [fetchAttendanceData]);
 
   const onDayPress = (day: any) => {
     setSelectedDate(day.dateString);
@@ -73,6 +117,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
       <Animated.View 
         entering={FadeInDown.delay(100).springify()}
         style={styles.statisticsCard}
+        key={`stats-${refreshKey}`} // Add key for re-animation on refresh
       >
         <LinearGradient
           colors={[colors.primary[500], colors.primary[600]]}
@@ -80,7 +125,17 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Text style={styles.statisticsTitle}>Attendance Overview</Text>
+          <View style={styles.statisticsHeader}>
+            <Text style={styles.statisticsTitle}>Attendance Overview</Text>
+            {/* Add manual refresh button */}
+            <TouchableOpacity 
+              onPress={handleRefresh} 
+              style={styles.refreshButton}
+              activeOpacity={0.7}
+            >
+              <FontAwesome6 name="arrows-rotate" size={16} color={colors.white} />
+            </TouchableOpacity>
+          </View>
           
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
@@ -248,13 +303,26 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      // Add pull to refresh functionality
+      refreshControl={
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={handleRefresh}
+          colors={[colors.primary[500]]}
+          tintColor={colors.primary[500]}
+        />
+      }
+    >
       {renderStatisticsCard()}
       
       <View style={styles.calendarCard}>
         <Text style={styles.calendarTitle}>Attendance Calendar</Text>
         
         <Calendar
+          key={refreshKey} // Force re-render on refresh
           current={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
           onDayPress={onDayPress}
           onMonthChange={onMonthChange}
@@ -347,12 +415,21 @@ const styles = StyleSheet.create({
   gradientContainer: {
     padding: 20,
   },
+  statisticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   statisticsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.white,
-    marginBottom: 20,
-    textAlign: 'center',
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   statsGrid: {
     flexDirection: 'row',

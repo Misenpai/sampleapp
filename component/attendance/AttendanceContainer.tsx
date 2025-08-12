@@ -133,9 +133,11 @@ export function AttendanceContainer() {
     return "Outside (Unknown Location)";
   };
 
+  // Update in AttendanceContainer.tsx - handleUpload function
+
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
-    
+
     // Double-check userId exists before uploading
     if (!userId) {
       Alert.alert("Error", "Please login to mark attendance");
@@ -158,6 +160,9 @@ export function AttendanceContainer() {
         // Mark attendance for today
         const { markAttendanceForToday } = useAttendanceStore.getState();
         markAttendanceForToday(finalLocation);
+
+        // ✅ NEW: Force refresh server attendance data after successful upload
+        await useAttendanceStore.getState().fetchTodayAttendanceFromServer();
 
         Alert.alert("Success", "Attendance recorded!", [
           { text: "OK", onPress: resetAll },
@@ -200,20 +205,22 @@ export function AttendanceContainer() {
 
   // Check if we're still loading
   if (isLoadingUserId) return <LoadingScreen text="Loading..." />;
-  
+
   // Check if user is not logged in (after initialization)
   if (isInitialized && !userId) {
     // This shouldn't happen as the auth gate should redirect to login
     // But just in case, we show a message
-    return <LoadingScreen text="Please login to continue" subtext="Redirecting..." />;
+    return (
+      <LoadingScreen text="Please login to continue" subtext="Redirecting..." />
+    );
   }
 
   if (!camera.permission?.granted)
     return <PermissionScreen onRequestPermission={camera.requestPermission} />;
-  
+
   if (uploading)
     return <LoadingScreen text="Uploading..." subtext="Please wait" />;
-  
+
   if (showExpandedMap)
     return (
       <ExpandedMapView
@@ -281,9 +288,10 @@ export function AttendanceContainer() {
                 photos={photos}
                 audioRecording={audioRecording}
                 onTakePhotos={() => {
-                  console.log('Starting photo capture process');
+                  console.log("Starting photo capture process");
                   // Generate new photo position when starting to take photos
-                  const { generateNewPhotoPosition } = useAttendanceStore.getState();
+                  const { generateNewPhotoPosition } =
+                    useAttendanceStore.getState();
                   generateNewPhotoPosition();
                   setCurrentPhotoIndex(0);
                   setRetakeMode(false);
