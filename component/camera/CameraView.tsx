@@ -1,6 +1,7 @@
 // component/camera/CameraView.tsx
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { CameraCapturedPicture, CameraView as ExpoCameraView } from 'expo-camera';
+import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
@@ -15,17 +16,15 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
   useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+  useSharedValue
 } from 'react-native-reanimated';
 
 import { colors } from '@/constants/colors';
 import { useAttendanceStore } from '@/store/attendanceStore';
 import { CameraControls } from './CameraControl';
-import { PhotoPreviewModal } from './PhotoPreviewModal';
 import { SelfieInstructions } from './SelfieInstructions';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface CameraViewProps {
   camera: any;
@@ -46,8 +45,7 @@ export function CameraView({
   onPhotoTaken,
   onBack,
 }: CameraViewProps) {
-  const [capturedPhoto, setCapturedPhoto] =
-    useState<CameraCapturedPicture | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<CameraCapturedPicture | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -70,16 +68,14 @@ export function CameraView({
     if (isCapturing) return;
     setIsCapturing(true);
 
-    // shutter flash animation
-    shutterOpacity.value = withSpring(1, { damping: 1 }, () => {
-      shutterOpacity.value = withSpring(0);
-    });
-
-    const photo = await camera.takePicture();
-    if (photo) {
-      setCapturedPhoto(photo);
-      // show preview after shutter animation
-      setTimeout(() => setShowPreview(true), 300);
+    try {
+      const photo = await camera.takePicture();
+      if (photo) {
+        setCapturedPhoto(photo);
+        setShowPreview(true);  // Show immediately, no delay
+      }
+    } catch (error) {
+      console.error('Error taking picture:', error);
     }
     setIsCapturing(false);
   };
@@ -99,6 +95,114 @@ export function CameraView({
 
   const toggleInstructions = () => setShowInstructions((v) => !v);
 
+  const getPositionText = () => {
+    switch (currentPosition) {
+      case 'front':
+        return 'Face Forward';
+      case 'left':
+        return 'Turn Left';
+      case 'right':
+        return 'Turn Right';
+      default:
+        return 'Face Forward';
+    }
+  };
+
+  const getPositionIcon = () => {
+    switch (currentPosition) {
+      case 'front':
+        return 'user';
+      case 'left':
+        return 'angle-left';
+      case 'right':
+        return 'angle-right';
+      default:
+        return 'user';
+    }
+  };
+
+  const getPositionLabel = () => {
+    switch (currentPosition) {
+      case 'front':
+        return 'Front Face';
+      case 'left':
+        return 'Left Profile';
+      case 'right':
+        return 'Right Profile';
+      default:
+        return 'Front Face';
+    }
+  };
+
+  // If showing preview, render the preview screen
+  if (showPreview && capturedPhoto) {
+    return (
+      <View style={styles.previewContainer}>
+        {/* Preview Header */}
+        <View style={styles.previewHeader}>
+          <Text style={styles.previewTitle}>Review Your Photo</Text>
+          <Text style={styles.previewSubtitle}>Make sure your face is clearly visible</Text>
+        </View>
+
+        {/* Photo Display with platform-specific mirror fix */}
+        <View style={styles.photoDisplayContainer}>
+          <Image
+            source={{ uri: capturedPhoto.uri }}
+            style={[
+              styles.photoDisplay,
+              Platform.OS === 'ios' && camera.facing === 'front' && styles.mirrorFix
+            ]}
+            contentFit="cover"
+          />
+          
+          {/* Position Badge */}
+          <View style={styles.positionBadge}>
+            <FontAwesome6 name={getPositionIcon()} size={16} color={colors.white} />
+            <Text style={styles.positionBadgeText}>{getPositionLabel()}</Text>
+          </View>
+
+          {/* Photo Info */}
+          <View style={styles.photoInfo}>
+            <Text style={styles.photoInfoText}>Photo {currentPhotoIndex + 1} of {totalPhotos}</Text>
+          </View>
+        </View>
+
+        {/* Timestamp */}
+        <View style={styles.timestampContainer}>
+          <Text style={styles.timestampText}>
+            {new Date().toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </Text>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.previewActions}>
+          <Pressable 
+            style={styles.retakeButton}
+            onPress={handleRetake}
+          >
+            <FontAwesome6 name="camera-rotate" size={20} color={colors.error} />
+            <Text style={styles.retakeButtonText}>Retake</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.usePhotoButton}
+            onPress={handleKeep}
+          >
+            <FontAwesome6 name="check" size={20} color={colors.white} />
+            <Text style={styles.usePhotoButtonText}>Use This Photo</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // Camera View with all original features
   return (
     <View style={styles.container}>
       {/* Camera feed */}
@@ -111,7 +215,7 @@ export function CameraView({
         responsiveOrientationWhenOrientationLocked
       />
 
-      {/* Shutter flash overlay */}
+      {/* Shutter flash overlay - removed but keeping for structure */}
       <Animated.View
         style={[styles.shutterEffect, shutterAnimatedStyle]}
         pointerEvents="none"
@@ -140,13 +244,7 @@ export function CameraView({
             <Text style={styles.counterText}>
               {retakeMode
                 ? `Retaking Photo`
-                : `Today's Photo: ${
-                    currentPosition === 'front'
-                      ? 'Front Face'
-                      : currentPosition === 'left'
-                      ? 'Left Profile'
-                      : 'Right Profile'
-                  }`}
+                : `Today's Photo: ${getPositionLabel()}`}
             </Text>
           </View>
 
@@ -165,38 +263,27 @@ export function CameraView({
 
             <View style={styles.positionIndicator}>
               <FontAwesome6
-                name={
-                  currentPosition === 'front'
-                    ? 'user'
-                    : currentPosition === 'left'
-                    ? 'angle-left'
-                    : 'angle-right'
-                }
+                name={getPositionIcon()}
                 size={30}
                 color="rgba(255,255,255,0.5)"
               />
-              <Text style={styles.positionText}>
-                {currentPosition === 'front'
-                  ? 'Face Forward'
-                  : currentPosition === 'left'
-                  ? 'Turn Left'
-                  : 'Turn Right'}
-              </Text>
+              <Text style={styles.positionText}>{getPositionText()}</Text>
             </View>
           </View>
         </View>
 
-        {/* Instructions Modal */}
+        {/* Instructions Modal - Updated with onClose prop */}
         {showInstructions && (
           <Animated.View
             entering={SlideInDown.duration(300)}
-            exiting={SlideOutDown.duration(300)}
+            exiting={SlideOutDown}
             style={styles.instructionsOverlay}
           >
             <SelfieInstructions
               position={currentPosition}
               photoNumber={currentPhotoIndex + 1}
               totalPhotos={totalPhotos}
+              onClose={() => setShowInstructions(false)}
             />
           </Animated.View>
         )}
@@ -206,26 +293,19 @@ export function CameraView({
           <CameraControls onTakePicture={handleTakePicture} />
         </View>
       </View>
-
-      {/* Photo Preview Modal */}
-      <PhotoPreviewModal
-        visible={showPreview}
-        photo={capturedPhoto}
-        position={currentPosition}
-        photoNumber={currentPhotoIndex + 1}
-        onKeep={handleKeep}
-        onRetake={handleRetake}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1 
+  },
   shutterEffect: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'white',
     zIndex: 999,
+    opacity: 0, // Keep it invisible since animation is removed
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -258,7 +338,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
-  counterText: { color: colors.white, fontSize: 16, fontWeight: '600' },
+  counterText: { 
+    color: colors.white, 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
   quickTips: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 100 : (StatusBar.currentHeight || 30) + 60,
@@ -270,7 +354,11 @@ const styles = StyleSheet.create({
     zIndex: 11,
     marginTop: 60,
   },
-  quickTipText: { color: colors.white, fontSize: 14, fontWeight: '500' },
+  quickTipText: { 
+    color: colors.white, 
+    fontSize: 14, 
+    fontWeight: '500' 
+  },
   faceGuideContainer: {
     position: 'absolute',
     top: '40%',
@@ -291,18 +379,45 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.8)',
     borderWidth: 3,
   },
-  topLeft: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 20 },
-  topRight: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 20 },
-  bottomLeft: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 20 },
-  bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 20 },
-  positionIndicator: { alignItems: 'center' },
-  positionText: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600', marginTop: 8 },
+  topLeft: { 
+    top: 0, 
+    left: 0, 
+    borderRightWidth: 0, 
+    borderBottomWidth: 0, 
+    borderTopLeftRadius: 20 
+  },
+  topRight: { 
+    top: 0, 
+    right: 0, 
+    borderLeftWidth: 0, 
+    borderBottomWidth: 0, 
+    borderTopRightRadius: 20 
+  },
+  bottomLeft: { 
+    bottom: 0, 
+    left: 0, 
+    borderRightWidth: 0, 
+    borderTopWidth: 0, 
+    borderBottomLeftRadius: 20 
+  },
+  bottomRight: { 
+    bottom: 0, 
+    right: 0, 
+    borderLeftWidth: 0, 
+    borderTopWidth: 0, 
+    borderBottomRightRadius: 20 
+  },
+  positionIndicator: { 
+    alignItems: 'center' 
+  },
+  positionText: { 
+    color: 'rgba(255,255,255,0.8)', 
+    fontSize: 14, 
+    fontWeight: '600', 
+    marginTop: 8 
+  },
   instructionsOverlay: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    transform: [{ translateY: -150 }],
+    ...StyleSheet.absoluteFillObject, // Updated to cover full screen for centering
     zIndex: 5,
   },
   bottomControls: {
@@ -311,5 +426,117 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+  },
+  // Preview Styles
+  previewContainer: {
+    flex: 1,
+    backgroundColor: colors.gray[900],
+    paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 30) + 20,
+  },
+  previewHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  previewTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.white,
+    marginBottom: 8,
+  },
+  previewSubtitle: {
+    fontSize: 14,
+    color: colors.gray[400],
+  },
+  photoDisplayContainer: {
+    flex: 1,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: colors.gray[800],
+    position: 'relative',
+  },
+  photoDisplay: {
+    width: '100%',
+    height: '100%',
+  },
+  mirrorFix: {
+    transform: [{ scaleX: -1 }],
+  },
+  positionBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  positionBadgeText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoInfo: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  photoInfoText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  timestampContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  timestampText: {
+    color: colors.gray[500],
+    fontSize: 12,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  retakeButton: {
+    flex: 1,
+    backgroundColor: colors.white,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  retakeButtonText: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  usePhotoButton: {
+    flex: 1.5,
+    backgroundColor: colors.success,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  usePhotoButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

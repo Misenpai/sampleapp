@@ -2,27 +2,28 @@
 import { colors } from '@/constants/colors';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-    Easing,
-    FadeIn,
-    FadeOut,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming
+  Easing,
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
 } from 'react-native-reanimated';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface SelfieInstructionsProps {
   position: 'front' | 'left' | 'right';
   photoNumber: number;
   totalPhotos: number;
+  onClose?: () => void; // Add onClose prop
 }
 
-export function SelfieInstructions({ position, photoNumber, totalPhotos }: SelfieInstructionsProps) {
+export function SelfieInstructions({ position, photoNumber, totalPhotos, onClose }: SelfieInstructionsProps) {
   const rotation = useSharedValue(0);
   const phoneRotation = useSharedValue(0);
   const headPosition = useSharedValue(0);
@@ -155,110 +156,128 @@ export function SelfieInstructions({ position, photoNumber, totalPhotos }: Selfi
       case 'front':
         return 'Front Face';
       case 'left':
-        return 'Left Profile';
+        return 'Left Face';
       case 'right':
-        return 'Right Profile';
+        return 'Right Face';
       default:
         return '';
     }
   };
 
   return (
-    <Animated.View 
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(300)}
-      style={styles.container}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.photoCounter}>Photo {photoNumber} of {totalPhotos}</Text>
-        <View style={styles.positionBadge}>
-          <Text style={styles.positionLabel}>{getPositionLabel()}</Text>
-        </View>
-      </View>
+    <View style={styles.overlay}>
+      <Animated.View 
+        entering={FadeIn.duration(300)}
+        exiting={FadeOut.duration(300)}
+        style={styles.container}
+      >
+        {/* Close Button */}
+        <Pressable 
+          style={styles.closeButton}
+          onPress={onClose}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <FontAwesome6 name="xmark" size={20} color={colors.white} />
+        </Pressable>
 
-      {/* Animation Container */}
-      <View style={styles.animationContainer}>
-        {/* Head/Face Icon */}
-        <Animated.View style={[styles.headContainer, headAnimatedStyle]}>
-          <View style={styles.faceCircle}>
-            <FontAwesome6 name="user" size={40} color={colors.primary[500]} />
-            {/* Face direction indicator */}
-            {position !== 'front' && (
-              <View style={[
-                styles.directionIndicator,
-                position === 'left' ? styles.leftIndicator : styles.rightIndicator
-              ]}>
-                <FontAwesome6 
-                  name={position === 'left' ? 'chevron-left' : 'chevron-right'} 
-                  size={16} 
-                  color={colors.white} 
-                />
-              </View>
-            )}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.photoCounter}>Photo {photoNumber} of {totalPhotos}</Text>
+          <View style={styles.positionBadge}>
+            <Text style={styles.positionLabel}>{getPositionLabel()}</Text>
           </View>
-        </Animated.View>
+        </View>
 
-        {/* Direction Arrow */}
-        {position !== 'front' && (
-          <Animated.View style={[styles.arrow, arrowAnimatedStyle]}>
-            <FontAwesome6 
-              name={`arrow-${position}`} 
-              size={30} 
-              color={colors.primary[400]} 
-            />
-          </Animated.View>
-        )}
-
-        {/* Phone Icon */}
-        <Animated.View style={[styles.phoneContainer, phoneAnimatedStyle]}>
-          <View style={styles.phone}>
-            <FontAwesome6 name="mobile-screen" size={50} color={colors.gray[700]} />
-            <View style={styles.cameraIndicator}>
-              <View style={styles.cameraLens} />
+        {/* Animation Container */}
+        <View style={styles.animationContainer}>
+          {/* Head/Face Icon */}
+          <Animated.View style={[styles.headContainer, headAnimatedStyle]}>
+            <View style={styles.faceCircle}>
+              <FontAwesome6 name="user" size={40} color={colors.primary[500]} />
+              {/* Face direction indicator */}
+              {position !== 'front' && (
+                <View style={[
+                  styles.directionIndicator,
+                  position === 'left' ? styles.leftIndicator : styles.rightIndicator
+                ]}>
+                  <FontAwesome6 
+                    name={position === 'left' ? 'chevron-left' : 'chevron-right'} 
+                    size={16} 
+                    color={colors.white} 
+                  />
+                </View>
+              )}
             </View>
-          </View>
-        </Animated.View>
-      </View>
+          </Animated.View>
 
-      {/* Instructions Text */}
-      <View style={styles.instructionsContainer}>
-        <Text style={styles.instructionText}>{getInstructionText()}</Text>
-        
-        {/* Visual Guide Dots */}
-        <View style={styles.dotsContainer}>
-          {[0, 1, 2].map((index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === (position === 'front' ? 0 : position === 'left' ? 1 : 2) && styles.activeDot
-              ]}
-            />
-          ))}
+          {/* Direction Arrow */}
+          {position !== 'front' && (
+            <Animated.View style={[styles.arrow, arrowAnimatedStyle]}>
+              <FontAwesome6 
+                name={`arrow-${position}`} 
+                size={30} 
+                color={colors.primary[400]} 
+              />
+            </Animated.View>
+          )}
+
+          {/* Phone Icon */}
+          <Animated.View style={[styles.phoneContainer, phoneAnimatedStyle]}>
+            <View style={styles.phone}>
+              <FontAwesome6 name="mobile-screen" size={50} color={colors.gray[700]} />
+              <View style={styles.cameraIndicator}>
+                <View style={styles.cameraLens} />
+              </View>
+            </View>
+          </Animated.View>
         </View>
-      </View>
 
-      {/* Tips Section */}
-      <View style={styles.tipsContainer}>
-        <FontAwesome6 name="lightbulb" size={16} color={colors.warning} />
-        <Text style={styles.tipText}>
-          {position === 'front' 
-            ? 'Keep your face centered and well-lit'
-            : `Show your ${position} ear clearly in the frame`}
-        </Text>
-      </View>
-    </Animated.View>
+        {/* Instructions Text */}
+        <View style={styles.instructionsContainer}>
+          <Text style={styles.instructionText}>{getInstructionText()}</Text>
+        </View>
+
+        {/* Tips Section */}
+        <View style={styles.tipsContainer}>
+          <FontAwesome6 name="lightbulb" size={16} color={colors.warning} />
+          <Text style={styles.tipText}>
+            {position === 'front' 
+              ? 'Keep your face centered and well-lit'
+              : `Show your ${position} ear clearly in the frame`}
+          </Text>
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Optional: adds a semi-transparent backdrop
+  },
   container: {
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     borderRadius: 20,
     padding: 20,
-    margin: 20,
+    width: screenWidth - 40,
+    maxWidth: 400,
     alignItems: 'center',
+    position: 'relative', // For close button positioning
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
   header: {
     width: '100%',
@@ -266,6 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 10, // Add some top margin since we have close button
   },
   photoCounter: {
     fontSize: 16,
@@ -277,6 +297,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    marginTop: 30,
   },
   positionLabel: {
     color: colors.white,
@@ -285,7 +306,7 @@ const styles = StyleSheet.create({
   },
   animationContainer: {
     height: 150,
-    width: screenWidth - 80,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -365,21 +386,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 15,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.gray[600],
-  },
-  activeDot: {
-    backgroundColor: colors.primary[400],
-    width: 24,
   },
   tipsContainer: {
     flexDirection: 'row',
