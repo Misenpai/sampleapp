@@ -32,14 +32,14 @@ export function Button({
 
 const styles = StyleSheet.create({
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary[500],
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 0,
     alignItems: "center",
   },
   secondary: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.secondary[500],
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
