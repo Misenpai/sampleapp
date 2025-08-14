@@ -83,7 +83,7 @@ export function CameraView({
           const manipulatedImage = await manipulateAsync(
             photo.uri,
             [{ flip: FlipType.Horizontal }],
-            { compress: 0.9, format: SaveFormat.JPEG }
+            { compress: 0.9, format: SaveFormat.JPEG },
           );
           processedPhoto = {
             ...photo,
@@ -250,8 +250,8 @@ export function CameraView({
             {currentPosition === "front"
               ? "📷 Look straight at camera"
               : currentPosition === "left"
-              ? "👉 Turn head to your right"
-              : "👈 Turn head to your left"}
+                ? "👉 Turn head to your right"
+                : "👈 Turn head to your left"}
           </Text>
         </View>
 

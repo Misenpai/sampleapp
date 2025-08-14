@@ -1,16 +1,16 @@
 // component/profile/AttendanceCalendar.tsx
-import { colors } from '@/constants/colors';
+import { colors } from "@/constants/colors";
 import {
   AttendanceDate,
   AttendanceStatistics,
   getAttendanceCalendar,
-  getMarkedDates
-} from '@/services/attendanceCalendarService';
-import { useAttendanceStore } from '@/store/attendanceStore'; // Add this import
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import { useFocusEffect } from '@react-navigation/native'; // Add this import if using React Navigation
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react'; // Add useCallback
+  getMarkedDates,
+} from "@/services/attendanceCalendarService";
+import { useAttendanceStore } from "@/store/attendanceStore";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,85 +19,105 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+  View,
+} from "react-native";
+import { Calendar } from "react-native-calendars";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 interface AttendanceCalendarProps {
   empId: string;
 }
 
-export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId }) => {
+export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
+  empId,
+}) => {
   const [loading, setLoading] = useState(true);
   const [attendanceDates, setAttendanceDates] = useState<AttendanceDate[]>([]);
-  const [statistics, setStatistics] = useState<AttendanceStatistics | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [statistics, setStatistics] = useState<AttendanceStatistics | null>(
+    null,
+  );
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [markedDates, setMarkedDates] = useState<any>({});
-  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for manual refresh
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Subscribe to attendance store changes
-  const attendanceRecords = useAttendanceStore((state) => state.attendanceRecords);
-  const todayAttendanceMarked = useAttendanceStore((state) => state.todayAttendanceMarked);
+  const attendanceRecords = useAttendanceStore(
+    (state) => state.attendanceRecords,
+  );
+  const todayAttendanceMarked = useAttendanceStore(
+    (state) => state.todayAttendanceMarked,
+  );
+  const { fieldTripDates, userLocationType } = useAttendanceStore();
 
-  const fetchAttendanceData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      
-      const response = await getAttendanceCalendar(empId, selectedYear, selectedMonth);
-      
-      if (response.success && response.data) {
-        setAttendanceDates(response.data.dates);
-        setStatistics(response.data.statistics);
-        setMarkedDates(getMarkedDates(response.data.dates));
-      } else {
-        Alert.alert('Error', response.error || 'Failed to load attendance data');
+  const fetchAttendanceData = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) setLoading(true);
+
+        const response = await getAttendanceCalendar(
+          empId,
+          selectedYear,
+          selectedMonth,
+        );
+
+        if (response.success && response.data) {
+          setAttendanceDates(response.data.dates);
+          setStatistics(response.data.statistics);
+          setMarkedDates(getMarkedDates(response.data.dates));
+        } else {
+          Alert.alert(
+            "Error",
+            response.error || "Failed to load attendance data",
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching attendance:", error);
+        Alert.alert("Error", "Failed to load attendance data");
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
-      Alert.alert('Error', 'Failed to load attendance data');
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [empId, selectedYear, selectedMonth]);
+    },
+    [empId, selectedYear, selectedMonth],
+  );
 
-  // Initial load and month/year changes
   useEffect(() => {
     fetchAttendanceData();
   }, [fetchAttendanceData]);
 
-  // Listen to attendance records changes for real-time updates
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
-    
-    // Only refresh if we're viewing the current month and attendance was marked today
+
     if (selectedMonth === currentMonth && selectedYear === currentYear) {
-      const todayRecord = attendanceRecords.find(record => record.date === today);
+      const todayRecord = attendanceRecords.find(
+        (record) => record.date === today,
+      );
       if (todayRecord || todayAttendanceMarked) {
-        // Small delay to ensure server has processed the data
         const timeoutId = setTimeout(() => {
-          fetchAttendanceData(false); // Refresh without loading spinner
+          fetchAttendanceData(false);
         }, 1000);
-        
+
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [attendanceRecords, todayAttendanceMarked, selectedMonth, selectedYear, fetchAttendanceData]);
+  }, [
+    attendanceRecords,
+    todayAttendanceMarked,
+    selectedMonth,
+    selectedYear,
+    fetchAttendanceData,
+  ]);
 
-  // Add focus effect to refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchAttendanceData(false); // Refresh data when screen comes into focus
-    }, [fetchAttendanceData])
+      fetchAttendanceData(false);
+    }, [fetchAttendanceData]),
   );
 
-  // Manual refresh function
   const handleRefresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
     fetchAttendanceData(true);
   }, [fetchAttendanceData]);
 
@@ -110,14 +130,81 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
     setSelectedYear(month.year);
   };
 
+  // Helper to check if a date is a field trip date
+  const isFieldTripDate = useCallback(
+    (dateStr: string) => {
+      if (userLocationType !== "FIELDTRIP") return false;
+      return fieldTripDates.some((trip) => {
+        const start = new Date(trip.startDate);
+        const end = new Date(trip.endDate);
+        const checkDate = new Date(dateStr);
+        return checkDate >= start && checkDate <= end;
+      });
+    },
+    [fieldTripDates, userLocationType],
+  );
+
+  // Enhanced marked dates with field trip styling
+  const getEnhancedMarkedDates = useCallback(() => {
+    const marked = getMarkedDates(attendanceDates);
+
+    // Apply field trip styling
+    if (userLocationType === "FIELDTRIP" && fieldTripDates.length > 0) {
+      Object.keys(marked).forEach((dateStr) => {
+        if (isFieldTripDate(dateStr)) {
+          marked[dateStr] = {
+            ...marked[dateStr],
+            customStyles: {
+              container: {
+                backgroundColor: "#F3F4F6",
+                borderRadius: 6,
+              },
+              text: {
+                color: "#9CA3AF",
+                fontWeight: "500",
+              },
+            },
+          };
+        }
+      });
+
+      // Mark any field trip dates that don't have attendance
+      fieldTripDates.forEach((trip) => {
+        const start = new Date(trip.startDate);
+        const end = new Date(trip.endDate);
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split("T")[0];
+
+          if (!marked[dateStr]) {
+            marked[dateStr] = {
+              customStyles: {
+                container: {
+                  backgroundColor: "#F3F4F6",
+                  borderRadius: 6,
+                },
+                text: {
+                  color: "#9CA3AF",
+                  fontWeight: "500",
+                },
+              },
+            };
+          }
+        }
+      });
+    }
+
+    return marked;
+  }, [attendanceDates, fieldTripDates, userLocationType, isFieldTripDate]);
+
   const renderStatisticsCard = () => {
     if (!statistics) return null;
 
     return (
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.delay(100).springify()}
         style={styles.statisticsCard}
-        key={`stats-${refreshKey}`} // Add key for re-animation on refresh
+        key={`stats-${refreshKey}`}
       >
         <LinearGradient
           colors={[colors.primary[500], colors.primary[600]]}
@@ -127,22 +214,31 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
         >
           <View style={styles.statisticsHeader}>
             <Text style={styles.statisticsTitle}>Attendance Overview</Text>
-            {/* Add manual refresh button */}
-            <TouchableOpacity 
-              onPress={handleRefresh} 
+            <TouchableOpacity
+              onPress={handleRefresh}
               style={styles.refreshButton}
               activeOpacity={0.7}
             >
-              <FontAwesome6 name="arrows-rotate" size={16} color={colors.white} />
+              <FontAwesome6
+                name="arrows-rotate"
+                size={16}
+                color={colors.white}
+              />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <View style={styles.statIconContainer}>
-                <FontAwesome6 name="calendar-check" size={24} color={colors.white} />
+                <FontAwesome6
+                  name="calendar-check"
+                  size={24}
+                  color={colors.white}
+                />
               </View>
-              <Text style={styles.statValue}>{statistics.totalDays.toFixed(1)}</Text>
+              <Text style={styles.statValue}>
+                {statistics.totalDays.toFixed(1)}
+              </Text>
               <Text style={styles.statLabel}>Total Days</Text>
             </View>
 
@@ -152,7 +248,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
               <View style={styles.statIconContainer}>
                 <FontAwesome6 name="star" size={24} color={colors.white} />
               </View>
-              <Text style={styles.statValue}>{statistics.totalFullDays || 0}</Text>
+              <Text style={styles.statValue}>
+                {statistics.totalFullDays || 0}
+              </Text>
               <Text style={styles.statLabel}>Full Days</Text>
             </View>
 
@@ -160,9 +258,15 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
 
             <View style={styles.statItem}>
               <View style={styles.statIconContainer}>
-                <FontAwesome6 name="star-half-stroke" size={24} color={colors.white} />
+                <FontAwesome6
+                  name="star-half-stroke"
+                  size={24}
+                  color={colors.white}
+                />
               </View>
-              <Text style={styles.statValue}>{statistics.totalHalfDays || 0}</Text>
+              <Text style={styles.statValue}>
+                {statistics.totalHalfDays || 0}
+              </Text>
               <Text style={styles.statLabel}>Half Days</Text>
             </View>
           </View>
@@ -171,7 +275,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
             <View style={styles.lastAttendanceContainer}>
               <FontAwesome6 name="clock" size={14} color={colors.gray[200]} />
               <Text style={styles.lastAttendanceText}>
-                Last attendance: {new Date(statistics.lastAttendance).toLocaleDateString()}
+                Last attendance:{" "}
+                {new Date(statistics.lastAttendance).toLocaleDateString()}
               </Text>
             </View>
           )}
@@ -183,96 +288,163 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
   const renderSelectedDateInfo = () => {
     if (!selectedDate) return null;
 
+    // Check if it's a field trip date first
+    if (isFieldTripDate(selectedDate)) {
+      return (
+        <Animated.View
+          entering={FadeInUp.duration(300)}
+          style={styles.selectedDateCard}
+        >
+          <Text style={styles.selectedDateTitle}>
+            {new Date(selectedDate).toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </Text>
+
+          <View
+            style={[
+              styles.attendanceBadge,
+              { backgroundColor: "#EDE9FE", borderColor: "#8B5CF6" },
+            ]}
+          >
+            <FontAwesome6 name="route" size={18} color="#8B5CF6" />
+            <Text style={[styles.attendanceBadgeText, { color: "#8B5CF6" }]}>
+              Field Trip
+            </Text>
+          </View>
+
+          <View style={styles.attendanceDetailsContainer}>
+            <View style={styles.attendanceDetailRow}>
+              <FontAwesome6
+                name="route"
+                size={16}
+                color={colors.primary[500]}
+              />
+              <Text style={styles.attendanceDetailLabel}>Status:</Text>
+              <Text style={styles.attendanceDetailValue}>
+                Field trip day - no attendance required
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      );
+    }
+
     const attendance = attendanceDates.find(
-      a => a.date.split('T')[0] === selectedDate
+      (a) => a.date.split("T")[0] === selectedDate,
     );
 
     if (!attendance) {
       return (
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.duration(300)}
           style={styles.selectedDateCard}
         >
           <Text style={styles.selectedDateTitle}>{selectedDate}</Text>
           <View style={styles.noAttendanceContainer}>
-            <FontAwesome6 name="calendar-xmark" size={32} color={colors.gray[400]} />
+            <FontAwesome6
+              name="calendar-xmark"
+              size={32}
+              color={colors.gray[400]}
+            />
             <Text style={styles.noAttendanceText}>No attendance marked</Text>
           </View>
         </Animated.View>
       );
     }
 
-    // Determine attendance status
     const getAttendanceStatus = () => {
       if (!attendance.attendance.isCheckedOut) {
         return {
-          label: 'In Progress',
+          label: "In Progress",
           color: colors.warning,
-          icon: 'clock',
-          backgroundColor: colors.warning + '20'
+          icon: "clock",
+          backgroundColor: colors.warning + "20",
         };
       }
-      if (attendance.attendance.attendanceType === 'FULL_DAY') {
+      if (attendance.attendance.attendanceType === "FULL_DAY") {
         return {
-          label: 'Full Day',
+          label: "Full Day",
           color: colors.success,
-          icon: 'circle-check',
-          backgroundColor: colors.success + '20'
+          icon: "circle-check",
+          backgroundColor: colors.success + "20",
         };
       }
       return {
-        label: 'Half Day',
+        label: "Half Day",
         color: colors.info,
-        icon: 'circle-half-stroke',
-        backgroundColor: colors.info + '20'
+        icon: "circle-half-stroke",
+        backgroundColor: colors.info + "20",
       };
     };
 
     const status = getAttendanceStatus();
 
     return (
-      <Animated.View 
+      <Animated.View
         entering={FadeInUp.duration(300)}
         style={styles.selectedDateCard}
       >
         <Text style={styles.selectedDateTitle}>
-          {new Date(attendance.date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+          {new Date(attendance.date).toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
           })}
         </Text>
-        
-        {/* Attendance Type Badge */}
-        <View style={[styles.attendanceBadge, { backgroundColor: status.backgroundColor, borderColor: status.color }]}>
+
+        <View
+          style={[
+            styles.attendanceBadge,
+            {
+              backgroundColor: status.backgroundColor,
+              borderColor: status.color,
+            },
+          ]}
+        >
           <FontAwesome6 name={status.icon} size={18} color={status.color} />
           <Text style={[styles.attendanceBadgeText, { color: status.color }]}>
             {status.label}
           </Text>
         </View>
-        
+
         <View style={styles.attendanceDetailsContainer}>
           {attendance.attendance.sessionType && (
             <View style={styles.attendanceDetailRow}>
-              <FontAwesome6 name="business-time" size={16} color={colors.primary[500]} />
+              <FontAwesome6
+                name="business-time"
+                size={16}
+                color={colors.primary[500]}
+              />
               <Text style={styles.attendanceDetailLabel}>Session:</Text>
               <Text style={styles.attendanceDetailValue}>
                 {attendance.attendance.sessionType}
               </Text>
             </View>
           )}
-          
+
           <View style={styles.attendanceDetailRow}>
-            <FontAwesome6 name="location-dot" size={16} color={colors.primary[500]} />
+            <FontAwesome6
+              name="location-dot"
+              size={16}
+              color={colors.primary[500]}
+            />
             <Text style={styles.attendanceDetailLabel}>Location:</Text>
             <Text style={styles.attendanceDetailValue}>
-              {attendance.attendance.takenLocation || 'Not specified'}
+              {attendance.attendance.takenLocation || "Not specified"}
             </Text>
           </View>
-          
+
           <View style={styles.attendanceDetailRow}>
-            <FontAwesome6 name="right-to-bracket" size={16} color={colors.primary[500]} />
+            <FontAwesome6
+              name="right-to-bracket"
+              size={16}
+              color={colors.primary[500]}
+            />
             <Text style={styles.attendanceDetailLabel}>Check-in:</Text>
             <Text style={styles.attendanceDetailValue}>
               {new Date(attendance.attendance.checkInTime).toLocaleTimeString()}
@@ -281,10 +453,16 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
 
           {attendance.attendance.checkOutTime && (
             <View style={styles.attendanceDetailRow}>
-              <FontAwesome6 name="right-from-bracket" size={16} color={colors.primary[500]} />
+              <FontAwesome6
+                name="right-from-bracket"
+                size={16}
+                color={colors.primary[500]}
+              />
               <Text style={styles.attendanceDetailLabel}>Check-out:</Text>
               <Text style={styles.attendanceDetailValue}>
-                {new Date(attendance.attendance.checkOutTime).toLocaleTimeString()}
+                {new Date(
+                  attendance.attendance.checkOutTime,
+                ).toLocaleTimeString()}
               </Text>
             </View>
           )}
@@ -303,10 +481,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
+    <ScrollView
+      style={styles.container}
       showsVerticalScrollIndicator={false}
-      // Add pull to refresh functionality
       refreshControl={
         <RefreshControl
           refreshing={loading}
@@ -317,22 +494,23 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
       }
     >
       {renderStatisticsCard()}
-      
+
       <View style={styles.calendarCard}>
         <Text style={styles.calendarTitle}>Attendance Calendar</Text>
-        
+
         <Calendar
-          key={refreshKey} // Force re-render on refresh
-          current={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
+          key={`${refreshKey}-${userLocationType}`}
+          current={`${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`}
           onDayPress={onDayPress}
           onMonthChange={onMonthChange}
+          markingType="custom" // ⬅️ Add this so customStyles will work
           markedDates={{
-            ...markedDates,
+            ...getEnhancedMarkedDates(),
             [selectedDate]: {
-              ...markedDates[selectedDate],
+              ...getEnhancedMarkedDates()[selectedDate],
               selected: true,
-              selectedColor: colors.primary[500]
-            }
+              selectedColor: colors.primary[500],
+            },
           }}
           theme={{
             backgroundColor: colors.white,
@@ -348,12 +526,12 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
             arrowColor: colors.primary[500],
             monthTextColor: colors.gray[800],
             indicatorColor: colors.primary[500],
-            textDayFontWeight: '400',
-            textMonthFontWeight: 'bold',
-            textDayHeaderFontWeight: '600',
+            textDayFontWeight: "400",
+            textMonthFontWeight: "bold",
+            textDayHeaderFontWeight: "600",
             textDayFontSize: 16,
             textMonthFontSize: 18,
-            textDayHeaderFontSize: 14
+            textDayHeaderFontSize: 14,
           }}
           style={styles.calendar}
         />
@@ -365,19 +543,35 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ empId })
         <Text style={styles.legendTitle}>Legend</Text>
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+            <View
+              style={[styles.legendDot, { backgroundColor: colors.success }]}
+            />
             <Text style={styles.legendText}>Full Day</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
+            <View
+              style={[styles.legendDot, { backgroundColor: colors.info }]}
+            />
             <Text style={styles.legendText}>Half Day</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+            <View
+              style={[styles.legendDot, { backgroundColor: colors.warning }]}
+            />
             <Text style={styles.legendText}>In Progress</Text>
           </View>
+          {userLocationType === "FIELDTRIP" && (
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#9CA3AF" }]}
+              />
+              <Text style={styles.legendText}>Field Trip</Text>
+            </View>
+          )}
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.gray[300] }]} />
+            <View
+              style={[styles.legendDot, { backgroundColor: colors.gray[300] }]}
+            />
             <Text style={styles.legendText}>Absent</Text>
           </View>
         </View>
@@ -393,8 +587,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 50,
   },
   loadingText: {
@@ -405,7 +599,7 @@ const styles = StyleSheet.create({
   statisticsCard: {
     margin: 16,
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     shadowColor: colors.primary[900],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -416,36 +610,36 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statisticsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   statisticsTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.white,
   },
   refreshButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statIconContainer: {
     marginBottom: 8,
   },
   statValue: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.white,
     marginBottom: 4,
   },
@@ -456,16 +650,16 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
   },
   lastAttendanceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopColor: "rgba(255, 255, 255, 0.2)",
   },
   lastAttendanceText: {
     fontSize: 14,
@@ -478,7 +672,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 20,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -486,7 +680,7 @@ const styles = StyleSheet.create({
   },
   calendarTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.gray[800],
     marginBottom: 16,
   },
@@ -499,7 +693,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 20,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -507,27 +701,27 @@ const styles = StyleSheet.create({
   },
   selectedDateTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.gray[800],
     marginBottom: 16,
   },
   attendanceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: 16,
   },
   attendanceBadgeText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   noAttendanceContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 20,
   },
   noAttendanceText: {
@@ -539,14 +733,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   attendanceDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   attendanceDetailLabel: {
     fontSize: 14,
     color: colors.gray[600],
-    fontWeight: '500',
+    fontWeight: "500",
   },
   attendanceDetailValue: {
     fontSize: 14,
@@ -559,7 +753,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -567,21 +761,21 @@ const styles = StyleSheet.create({
   },
   legendTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.gray[800],
     marginBottom: 12,
   },
   legendItems: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
     gap: 12,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    minWidth: '45%',
+    minWidth: "25%",
   },
   legendDot: {
     width: 12,

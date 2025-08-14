@@ -505,6 +505,51 @@ export const attendanceContainerStyles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 20,
   },
+  // Field trip styles
+  fieldTripContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  fieldTripGradient: {
+    width: '100%',
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+  },
+  fieldTripTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.white,
+    marginTop: 20,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  fieldTripText: {
+    fontSize: 16,
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: 30,
+    opacity: 0.9,
+    lineHeight: 24,
+  },
+  fieldTripInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 10,
+  },
+  fieldTripDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+  },
 });
 
 export const dropdownStyles = {

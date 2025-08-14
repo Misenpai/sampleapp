@@ -37,11 +37,17 @@ interface AttendanceState {
   attendanceRecords: AttendanceRecord[];
   todayAttendanceMarked: boolean;
   currentSessionPhotoPosition: PhotoPosition | null;
-  lastAttendanceUpdate: number; // NEW: For triggering calendar updates
+  lastAttendanceUpdate: number;
+
+  // Field trip related state
+  userLocationType: "ABSOLUTE" | "APPROX" | "FIELDTRIP" | null;
+  isFieldTrip: boolean;
+  fieldTripDates: { startDate: string; endDate: string }[];
 
   // Actions
   initializeUserId: () => Promise<void>;
   setUserId: (userId: string | null) => void;
+  clearUserId: () => void;
   setPhotos: (photos: CameraCapturedPicture[]) => void;
   setAudioRecording: (recording: AudioRecording | null) => void;
   setCurrentView: (view: ViewMode) => void;
@@ -54,21 +60,21 @@ interface AttendanceState {
   getTodayPhotoPosition: () => PhotoPosition;
   generateNewPhotoPosition: () => PhotoPosition;
   resetAll: () => void;
-  clearUserId: () => void;
   fetchTodayAttendanceFromServer: () => Promise<boolean>;
-  triggerAttendanceUpdate: () => void; // NEW: Manual trigger for updates
-  refreshAttendanceData: () => Promise<void>; // NEW: Force refresh from server
+  triggerAttendanceUpdate: () => void;
+  refreshAttendanceData: () => Promise<void>;
+  setUserLocationType: (
+    type: "ABSOLUTE" | "APPROX" | "FIELDTRIP" | null
+  ) => void;
+  checkFieldTripStatus: () => Promise<void>;
+  fetchUserLocationSettings: () => Promise<void>;
 }
 
-const getTodayDateString = () => {
-  const today = new Date();
-  return today.toISOString().split("T")[0];
-};
+const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
 const generateRandomPhotoPosition = (): PhotoPosition => {
   const positions: PhotoPosition[] = ["front", "left", "right"];
-  const randomIndex = Math.floor(Math.random() * positions.length);
-  return positions[randomIndex];
+  return positions[Math.floor(Math.random() * positions.length)];
 };
 
 export const useAttendanceStore = create<AttendanceState>()(
@@ -89,34 +95,30 @@ export const useAttendanceStore = create<AttendanceState>()(
       attendanceRecords: [],
       todayAttendanceMarked: false,
       currentSessionPhotoPosition: null,
-      lastAttendanceUpdate: 0, // NEW: Initialize update timestamp
+      lastAttendanceUpdate: 0,
+
+      // Field trip state
+      userLocationType: null,
+      isFieldTrip: false,
+      fieldTripDates: [],
 
       // Actions
       initializeUserId: async () => {
         try {
           set({ isLoadingUserId: true });
-
-          // Check if user is logged in first
           const userData = await getUserData();
 
-          if (userData && userData.isLoggedIn) {
-            // User is logged in, set the userId (which is the username)
+          if (userData?.isLoggedIn) {
             set({
               userId: userData.name,
               isLoadingUserId: false,
               isInitialized: true,
             });
 
-            // Check server attendance first, then local
-            const serverAttendanceExists =
-              await get().fetchTodayAttendanceFromServer();
-            if (!serverAttendanceExists) {
-              // If no server attendance, double-check local records
-              const localCheck = get().checkTodayAttendance();
-              set({ todayAttendanceMarked: localCheck });
-            }
+            // Fetch user location settings first, then attendance
+            await get().fetchUserLocationSettings();
+            await get().fetchTodayAttendanceFromServer();
           } else {
-            // User is not logged in, don't show error
             set({
               userId: null,
               isLoadingUserId: false,
@@ -124,8 +126,8 @@ export const useAttendanceStore = create<AttendanceState>()(
               todayAttendanceMarked: false,
             });
           }
-        } catch (error) {
-          console.error("Error initializing user ID:", error);
+        } catch (err) {
+          console.error("Error initializing user ID:", err);
           set({
             userId: null,
             isLoadingUserId: false,
@@ -140,21 +142,15 @@ export const useAttendanceStore = create<AttendanceState>()(
           userId,
           isInitialized: true,
           isLoadingUserId: false,
-          // Reset attendance status for new user
           todayAttendanceMarked: false,
-          attendanceRecords: [], // Clear previous user's records
-          lastAttendanceUpdate: Date.now(), // NEW: Trigger update
+          attendanceRecords: [],
+          lastAttendanceUpdate: Date.now(),
         });
 
-        // Check attendance after setting userId
         if (userId) {
           setTimeout(async () => {
-            const serverAttendanceExists =
-              await get().fetchTodayAttendanceFromServer();
-            if (!serverAttendanceExists) {
-              const localCheck = get().checkTodayAttendance();
-              set({ todayAttendanceMarked: localCheck });
-            }
+            await get().fetchUserLocationSettings();
+            await get().fetchTodayAttendanceFromServer();
           }, 100);
         }
       },
@@ -170,47 +166,42 @@ export const useAttendanceStore = create<AttendanceState>()(
           selectedLocationLabel: null,
           currentSessionPhotoPosition: null,
           todayAttendanceMarked: false,
-          attendanceRecords: [], // Clear all attendance records on logout
-          lastAttendanceUpdate: Date.now(), // NEW: Trigger update
+          attendanceRecords: [],
+          lastAttendanceUpdate: Date.now(),
+          userLocationType: null,
+          isFieldTrip: false,
+          fieldTripDates: [],
         });
       },
 
       setPhotos: (photos) => set({ photos }),
-
       setAudioRecording: (recording) => set({ audioRecording: recording }),
 
       setCurrentView: (view) => {
         const state = get();
-
         if (
           view === "camera" &&
           !state.retakeMode &&
           !state.currentSessionPhotoPosition
         ) {
-          const newPosition = generateRandomPhotoPosition();
           set({
             currentView: view,
-            currentSessionPhotoPosition: newPosition,
+            currentSessionPhotoPosition: generateRandomPhotoPosition(),
           });
         } else {
           set({ currentView: view });
         }
       },
 
-      setCurrentPhotoIndex: (index) => set({ currentPhotoIndex: index }),
-
-      setRetakeMode: (mode) => set({ retakeMode: mode }),
-
+      setCurrentPhotoIndex: (i) => set({ currentPhotoIndex: i }),
+      setRetakeMode: (m) => set({ retakeMode: m }),
       setSelectedLocationLabel: (label) =>
         set({ selectedLocationLabel: label }),
+      setUploading: (u) => set({ uploading: u }),
 
-      setUploading: (uploading) => set({ uploading }),
-
-      // ENHANCED: markAttendanceForToday with update trigger
-      markAttendanceForToday: (location: string) => {
+      markAttendanceForToday: (location) => {
         const today = getTodayDateString();
         const state = get();
-
         const newRecord: AttendanceRecord = {
           date: today,
           timestamp: Date.now(),
@@ -218,53 +209,35 @@ export const useAttendanceStore = create<AttendanceState>()(
           photosCount: state.photos.length,
           hasAudio: !!state.audioRecording,
         };
-
-        const updatedRecords = [
-          ...state.attendanceRecords.filter((record) => record.date !== today),
-          newRecord,
-        ];
-
         set({
-          attendanceRecords: updatedRecords,
+          attendanceRecords: [
+            ...state.attendanceRecords.filter((r) => r.date !== today),
+            newRecord,
+          ],
           todayAttendanceMarked: true,
-          lastAttendanceUpdate: Date.now(), // NEW: Trigger update for calendar
+          lastAttendanceUpdate: Date.now(),
         });
-
-        // NEW: Also trigger a server refresh after a short delay to ensure data is synced
-        setTimeout(() => {
-          get().fetchTodayAttendanceFromServer();
-        }, 2000);
+        setTimeout(() => get().fetchTodayAttendanceFromServer(), 2000);
       },
 
-      // ENHANCED: fetchTodayAttendanceFromServer with update trigger
       fetchTodayAttendanceFromServer: async () => {
         const state = get();
         if (!state.userId) return false;
-
         try {
-          const response = await fetch(
+          const res = await fetch(
             `${process.env.EXPO_PUBLIC_API_BASE}/attendance/today/${state.userId}`,
-            {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              // Add cache busting to ensure fresh data
-              cache: 'no-cache',
-            }
+            { cache: "no-cache" }
           );
-          const data = await response.json();
+          const data = await res.json();
+          const today = getTodayDateString();
 
           if (data.success && data.data) {
-            // Server has attendance record for today
-            const today = getTodayDateString();
             const serverRecord: AttendanceRecord = {
               date: today,
               timestamp: new Date(data.data.checkInTime).getTime(),
               location: data.data.takenLocation || "Unknown",
               photosCount: data.data.photos?.length || 0,
               hasAudio: data.data.audio?.length > 0,
-              // Add server-specific data
               checkInTime: data.data.checkInTime,
               checkOutTime: data.data.checkOutTime,
               sessionType: data.data.sessionType,
@@ -272,79 +245,49 @@ export const useAttendanceStore = create<AttendanceState>()(
               isCheckedOut: data.data.isCheckedOut,
               takenLocation: data.data.takenLocation,
             };
-
-            // Update local records with server data
-            const updatedRecords = [
-              ...state.attendanceRecords.filter(
-                (record) => record.date !== today
-              ),
-              serverRecord,
-            ];
-
             set({
-              attendanceRecords: updatedRecords,
+              attendanceRecords: [
+                ...state.attendanceRecords.filter((r) => r.date !== today),
+                serverRecord,
+              ],
               todayAttendanceMarked: true,
-              lastAttendanceUpdate: Date.now(), // NEW: Trigger update
+              lastAttendanceUpdate: Date.now(),
             });
-
-            console.log("✅ Server attendance data fetched and updated");
             return true;
           } else {
-            // No server record found, ensure local state is also false
-            const today = getTodayDateString();
-            const updatedRecords = state.attendanceRecords.filter(
-              (record) => record.date !== today
-            );
-
             set({
-              attendanceRecords: updatedRecords,
+              attendanceRecords: state.attendanceRecords.filter(
+                (r) => r.date !== today
+              ),
               todayAttendanceMarked: false,
-              lastAttendanceUpdate: Date.now(), // NEW: Trigger update even for no data
+              lastAttendanceUpdate: Date.now(),
             });
-
-            console.log("ℹ️ No server attendance data found for today");
             return false;
           }
-        } catch (error) {
-          console.error("❌ Error checking server attendance:", error);
-          // On error, check local records as fallback
+        } catch (err) {
+          console.error("Error fetching attendance:", err);
           return get().checkTodayAttendance();
         }
       },
 
       checkTodayAttendance: () => {
         const today = getTodayDateString();
-        const state = get();
-        const todayRecord = state.attendanceRecords.find(
-          (record) => record.date === today
-        );
-        const isMarked = !!todayRecord;
-
-        // Update the state if it's different
-        if (state.todayAttendanceMarked !== isMarked) {
-          set({ 
-            todayAttendanceMarked: isMarked,
-            lastAttendanceUpdate: Date.now(), // NEW: Trigger update on change
+        const hasRecord = get().attendanceRecords.some((r) => r.date === today);
+        if (get().todayAttendanceMarked !== hasRecord) {
+          set({
+            todayAttendanceMarked: hasRecord,
+            lastAttendanceUpdate: Date.now(),
           });
         }
-
-        return isMarked;
+        return hasRecord;
       },
 
-      getTodayPhotoPosition: () => {
-        const state = get();
-
-        if (state.currentSessionPhotoPosition) {
-          return state.currentSessionPhotoPosition;
-        }
-
-        return "front";
-      },
+      getTodayPhotoPosition: () => get().currentSessionPhotoPosition || "front",
 
       generateNewPhotoPosition: () => {
-        const position = generateRandomPhotoPosition();
-        set({ currentSessionPhotoPosition: position });
-        return position;
+        const pos = generateRandomPhotoPosition();
+        set({ currentSessionPhotoPosition: pos });
+        return pos;
       },
 
       resetAll: () =>
@@ -358,29 +301,90 @@ export const useAttendanceStore = create<AttendanceState>()(
           currentSessionPhotoPosition: null,
         }),
 
-      // NEW: Manual trigger for calendar updates
-      triggerAttendanceUpdate: () => {
-        set({ lastAttendanceUpdate: Date.now() });
-        console.log("🔄 Manual attendance update triggered");
+      triggerAttendanceUpdate: () => set({ lastAttendanceUpdate: Date.now() }),
+
+      refreshAttendanceData: async () => {
+        if (!get().userId) return;
+        await get().fetchUserLocationSettings();
+        await get().fetchTodayAttendanceFromServer();
+        get().triggerAttendanceUpdate();
       },
 
-      // NEW: Force refresh attendance data from server
-      refreshAttendanceData: async () => {
+      setUserLocationType: (type) => set({ userLocationType: type }),
+
+      // NEW: Separate function to fetch user location settings
+      // store/attendanceStore.ts - Update fetchUserLocationSettings function
+      fetchUserLocationSettings: async () => {
         const state = get();
         if (!state.userId) return;
 
-        console.log("🔄 Refreshing attendance data from server...");
         try {
-          // Fetch fresh data from server
-          await get().fetchTodayAttendanceFromServer();
-          
-          // Trigger update for any listening components
-          get().triggerAttendanceUpdate();
-          
-          console.log("✅ Attendance data refreshed successfully");
-        } catch (error) {
-          console.error("❌ Error refreshing attendance data:", error);
+          console.log("Fetching location settings for username:", state.userId);
+
+          // Use username endpoint instead of empId
+          const res = await fetch(
+            `${process.env.EXPO_PUBLIC_API_BASE}/user-location/username/${state.userId}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              cache: "no-cache",
+            }
+          );
+
+          const data = await res.json();
+          console.log("Location settings response:", data);
+
+          if (data.success && data.data) {
+            const locationData = data.data;
+
+            // Check if user is currently on a field trip
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time for date comparison
+
+            const isOnTrip =
+              locationData.fieldTrips?.some((trip: any) => {
+                const start = new Date(trip.startDate);
+                const end = new Date(trip.endDate);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
+                return today >= start && today <= end && trip.isActive;
+              }) || false;
+
+            set({
+              userLocationType: locationData.locationType || "ABSOLUTE",
+              fieldTripDates: locationData.fieldTrips || [],
+              isFieldTrip:
+                locationData.locationType === "FIELDTRIP" && isOnTrip,
+            });
+            console.log("Updated location state:", {
+              userLocationType: locationData.locationType || "ABSOLUTE",
+              isFieldTrip:
+                locationData.locationType === "FIELDTRIP" && isOnTrip,
+              fieldTripsCount: locationData.fieldTrips?.length || 0,
+            });
+          } else {
+            console.warn("Failed to fetch location settings:", data);
+            set({
+              userLocationType: "ABSOLUTE",
+              fieldTripDates: [],
+              isFieldTrip: false,
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching user location settings:", err);
+          set({
+            userLocationType: "ABSOLUTE",
+            fieldTripDates: [],
+            isFieldTrip: false,
+          });
         }
+      },
+
+      // UPDATED: Simplified checkFieldTripStatus that uses fetchUserLocationSettings
+      checkFieldTripStatus: async () => {
+        await get().fetchUserLocationSettings();
       },
     }),
     {
@@ -388,52 +392,21 @@ export const useAttendanceStore = create<AttendanceState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         attendanceRecords: state.attendanceRecords,
-        lastAttendanceUpdate: state.lastAttendanceUpdate, // NEW: Persist update timestamp
+        lastAttendanceUpdate: state.lastAttendanceUpdate,
+        userLocationType: state.userLocationType, // Persist location type
+        fieldTripDates: state.fieldTripDates, // Persist field trip dates
       }),
       onRehydrateStorage: () => (state) => {
-        // NEW: Trigger update after rehydration to notify components
         if (state) {
           state.lastAttendanceUpdate = Date.now();
+          // Re-fetch location settings on app startup
+          if (state.userId) {
+            setTimeout(() => {
+              state.fetchUserLocationSettings();
+            }, 1000);
+          }
         }
       },
     }
   )
 );
-
-// NEW: Export utility functions for external use
-
-/**
- * Get today's attendance record if exists
- */
-export const getTodayAttendanceRecord = () => {
-  const state = useAttendanceStore.getState();
-  const today = getTodayDateString();
-  return state.attendanceRecords.find(record => record.date === today);
-};
-
-/**
- * Check if user has attendance marked for a specific date
- */
-export const hasAttendanceForDate = (dateString: string) => {
-  const state = useAttendanceStore.getState();
-  return state.attendanceRecords.some(record => record.date === dateString);
-};
-
-/**
- * Get attendance records for a specific month
- */
-export const getMonthAttendanceRecords = (year: number, month: number) => {
-  const state = useAttendanceStore.getState();
-  return state.attendanceRecords.filter(record => {
-    const recordDate = new Date(record.date);
-    return recordDate.getFullYear() === year && recordDate.getMonth() === month - 1;
-  });
-};
-
-/**
- * Force refresh all attendance data and notify components
- */
-export const forceRefreshAttendance = async () => {
-  const store = useAttendanceStore.getState();
-  await store.refreshAttendanceData();
-};

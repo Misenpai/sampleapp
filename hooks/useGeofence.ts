@@ -1,4 +1,8 @@
-import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
+// hooks/useGeofence.ts
+import {
+  GEOFENCE_LOCATIONS,
+  IIT_GUWAHATI_LOCATION,
+} from "@/constants/geofenceLocation";
 import { LatLng, MapLayer, MapMarker, MapShape } from "@/types/geofence";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
@@ -7,21 +11,33 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { MapShapeType } from "react-native-leaflet-view";
 
-export function useGeofence(selectedGeofenceId?: string | null) {
+export function useGeofence(
+  selectedGeofenceId?: string | null,
+  userLocationType?: "ABSOLUTE" | "APPROX" | "FIELDTRIP" | null,
+  isFieldTrip?: boolean,
+) {
   const [html, setHtml] = useState<string | null>(null);
   const [userPos, setUserPos] = useState<LatLng | null>(null);
   const [initialPos, setInitialPos] = useState<LatLng | null>(null);
   const [currentLocation, setCurrentLocation] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const filteredGeofenceLocations = useMemo(() => {
+  // Determine active geofence locations based on user location type
+  const activeGeofenceLocations = useMemo(() => {
+    if (userLocationType === "APPROX") {
+      return [IIT_GUWAHATI_LOCATION];
+    } else if (userLocationType === "FIELDTRIP" && isFieldTrip) {
+      return []; // No geofences during field trips
+    }
+
+    // ABSOLUTE type - use selected or all locations
     if (!selectedGeofenceId) {
       return GEOFENCE_LOCATIONS;
     }
     return GEOFENCE_LOCATIONS.filter(
-      (location) => location.id === selectedGeofenceId
+      (location) => location.id === selectedGeofenceId,
     );
-  }, [selectedGeofenceId]);
+  }, [selectedGeofenceId, userLocationType, isFieldTrip]);
 
   const haversine = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -37,18 +53,18 @@ export function useGeofence(selectedGeofenceId?: string | null) {
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     },
-    []
+    [],
   );
 
   const checkGeofences = useCallback(
     (position: LatLng) => {
-     
-      for (const geofence of GEOFENCE_LOCATIONS) {
+      // Use active geofence locations instead of all locations
+      for (const geofence of activeGeofenceLocations) {
         const distance = haversine(
           position.lat,
           position.lng,
           geofence.center.lat,
-          geofence.center.lng
+          geofence.center.lng,
         );
 
         if (distance <= geofence.radius) {
@@ -57,19 +73,24 @@ export function useGeofence(selectedGeofenceId?: string | null) {
       }
       return null;
     },
-    [haversine]
+    [haversine, activeGeofenceLocations], // Add activeGeofenceLocations as dependency
   );
 
   const mapShapes = useMemo(
     (): MapShape[] =>
-      filteredGeofenceLocations.map((geofence, index) => ({
+      activeGeofenceLocations.map((geofence, index) => ({
         shapeType: MapShapeType.CIRCLE,
-        color: index === 0 ? "#00f" : "#f00",
+        color:
+          userLocationType === "APPROX"
+            ? "#00a8ff"
+            : index === 0
+              ? "#00f"
+              : "#f00",
         id: geofence.id,
         center: geofence.center,
         radius: geofence.radius,
       })),
-    [filteredGeofenceLocations]
+    [activeGeofenceLocations, userLocationType],
   );
 
   const mapLayers = useMemo(
@@ -83,14 +104,14 @@ export function useGeofence(selectedGeofenceId?: string | null) {
           '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
       },
     ],
-    []
+    [],
   );
 
   const staticLabelMarkers = useMemo(
     (): MapMarker[] =>
-      filteredGeofenceLocations.map((g, idx) => {
-        const offsetLat = g.center.lat + (idx === 0 ? 0.00015 : 0.00015);
-        const offsetLng = g.center.lng + (idx === 0 ? -0.0 : -0.0);
+      activeGeofenceLocations.map((g, idx) => {
+        const offsetLat = g.center.lat + 0.00015;
+        const offsetLng = g.center.lng;
 
         return {
           id: g.id + "_label",
@@ -98,13 +119,13 @@ export function useGeofence(selectedGeofenceId?: string | null) {
           icon: `
             <div style="
               position: relative;
-              background: #fff;
-              border: 2px solid #333;
+              background: ${userLocationType === "APPROX" ? "#00a8ff" : "#fff"};
+              border: 2px solid ${userLocationType === "APPROX" ? "#fff" : "#333"};
               border-radius: 8px;
               padding: 6px 10px;
               font-size: 12px;
               font-weight: bold;
-              color: #333;
+              color: ${userLocationType === "APPROX" ? "#fff" : "#333"};
               white-space: nowrap;
               box-shadow: 0 2px 6px rgba(0,0,0,0.3);
               min-width: 80px;
@@ -120,7 +141,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
                 height: 0;
                 border-left: 8px solid transparent;
                 border-right: 8px solid transparent;
-                border-top: 8px solid #333;
+                border-top: 8px solid ${userLocationType === "APPROX" ? "#fff" : "#333"};
               "></div>
             </div>
           `,
@@ -128,7 +149,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
           anchor: [50, 35],
         };
       }),
-    [filteredGeofenceLocations]
+    [activeGeofenceLocations, userLocationType],
   );
 
   const mapMarkers = useMemo((): MapMarker[] => {
@@ -159,27 +180,28 @@ export function useGeofence(selectedGeofenceId?: string | null) {
   }, [userPos, staticLabelMarkers]);
 
   const mapCenter = useMemo((): LatLng | null => {
-    if (filteredGeofenceLocations.length === 0) {
+    if (activeGeofenceLocations.length === 0) {
       return initialPos;
     }
 
-    if (filteredGeofenceLocations.length === 1) {
-      return filteredGeofenceLocations[0].center;
+    if (activeGeofenceLocations.length === 1) {
+      return activeGeofenceLocations[0].center;
     }
-    const totalLat = filteredGeofenceLocations.reduce(
+
+    const totalLat = activeGeofenceLocations.reduce(
       (sum, loc) => sum + loc.center.lat,
-      0
+      0,
     );
-    const totalLng = filteredGeofenceLocations.reduce(
+    const totalLng = activeGeofenceLocations.reduce(
       (sum, loc) => sum + loc.center.lng,
-      0
+      0,
     );
 
     return {
-      lat: totalLat / filteredGeofenceLocations.length,
-      lng: totalLng / filteredGeofenceLocations.length,
+      lat: totalLat / activeGeofenceLocations.length,
+      lng: totalLng / activeGeofenceLocations.length,
     };
-  }, [filteredGeofenceLocations, initialPos]);
+  }, [activeGeofenceLocations, initialPos]);
 
   useEffect(() => {
     const initializeHtml = async () => {
@@ -237,7 +259,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
 
             setUserPos(newPos);
             setCurrentLocation(checkGeofences(newPos));
-          }
+          },
         );
       } catch (e) {
         if (isComponentMounted) {
@@ -264,6 +286,7 @@ export function useGeofence(selectedGeofenceId?: string | null) {
     mapLayers,
     mapMarkers,
     mapCenter: mapCenter || initialPos,
-    filteredGeofenceLocations,
+    activeGeofenceLocations,
+    canSelectLocation: userLocationType === "ABSOLUTE",
   };
 }

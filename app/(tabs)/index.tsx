@@ -1,7 +1,7 @@
+import { AttendanceContainer } from '@/component/attendance/AttendanceContainer';
+import { globalStyles } from '@/constants/style';
 import React from 'react';
 import { View } from 'react-native';
-import { globalStyles } from '@/constants/style';
-import { AttendanceContainer } from '@/component/attendance/AttendanceContainer';
 
 
 export default function AttendanceScreen() {

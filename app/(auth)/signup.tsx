@@ -16,10 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  FadeInDown,
-  FadeInUp
-} from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
@@ -64,7 +61,12 @@ export default function SignupScreen() {
       return;
     }
 
-    await signUp(empId.trim(), username.trim(), email.trim().toLowerCase(), password.trim());
+    await signUp(
+      empId.trim(),
+      username.trim(),
+      email.trim().toLowerCase(),
+      password.trim(),
+    );
   };
 
   const handleSocialSignup = (provider: string) => {
@@ -80,59 +82,43 @@ export default function SignupScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Logo/Brand Section */}
+          <Animated.View
+            entering={FadeInDown.delay(100).springify()}
+            style={styles.logoContainer}
+          >
+            <View style={styles.logoCircle}>
+              <FontAwesome6
+                name="fingerprint"
+                size={50}
+                color={colors.primary[500]}
+              />
+            </View>
+            <Text style={styles.brandName}>Attendance</Text>
+          </Animated.View>
           {/* Header Section */}
-          <Animated.View 
+          <Animated.View
             entering={FadeInDown.delay(100).springify()}
             style={styles.headerContainer}
           >
             <Text style={styles.headerTitle}>Create Account</Text>
-            <Text style={styles.headerSubtitle}>Join us to get started</Text>
           </Animated.View>
 
           {/* Signup Form Card */}
-          <Animated.View 
+          <Animated.View
             entering={FadeInUp.delay(200).springify()}
             style={styles.formCard}
           >
-            {/* Social Signup Options */}
-            <View style={styles.socialSignupContainer}>
-              <Text style={styles.socialSignupText}>Sign up with</Text>
-              <View style={styles.socialButtonsRow}>
-                <TouchableOpacity 
-                  style={styles.socialButton}
-                  onPress={() => handleSocialSignup("Google")}
-                >
-                  <FontAwesome6 name="google" size={20} color="#DB4437" />
-                  <Text style={styles.socialButtonText}>Google</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.socialButton}
-                  onPress={() => handleSocialSignup("Microsoft")}
-                >
-                  <FontAwesome6 name="microsoft" size={20} color="#00A4EF" />
-                  <Text style={styles.socialButtonText}>Microsoft</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.divider} />
-            </View>
-
             {/* Form Inputs */}
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="id-badge" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="id-badge"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -147,10 +133,10 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="user" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="user"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -165,10 +151,10 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="envelope" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="envelope"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -184,10 +170,10 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="lock" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="lock"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -198,23 +184,23 @@ export default function SignupScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeIcon}
               >
-                <FontAwesome6 
-                  name={showPassword ? "eye" : "eye-slash"} 
-                  size={20} 
-                  color={colors.gray[400]} 
+                <FontAwesome6
+                  name={showPassword ? "eye" : "eye-slash"}
+                  size={20}
+                  color={colors.gray[400]}
                 />
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="lock" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="lock"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -225,14 +211,14 @@ export default function SignupScreen() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 style={styles.eyeIcon}
               >
-                <FontAwesome6 
-                  name={showConfirmPassword ? "eye" : "eye-slash"} 
-                  size={20} 
-                  color={colors.gray[400]} 
+                <FontAwesome6
+                  name={showConfirmPassword ? "eye" : "eye-slash"}
+                  size={20}
+                  color={colors.gray[400]}
                 />
               </TouchableOpacity>
             </View>
@@ -241,32 +227,45 @@ export default function SignupScreen() {
             {password.length > 0 && (
               <View style={styles.passwordStrength}>
                 <View style={styles.strengthBar}>
-                  <View 
+                  <View
                     style={[
                       styles.strengthFill,
                       {
-                        width: `${Math.min((password.length / 12) * 100, 100)}%`,
-                        backgroundColor: 
-                          password.length < 6 ? colors.error :
-                          password.length < 10 ? colors.warning :
-                          colors.success
-                      }
+                        width: `${Math.min(
+                          (password.length / 12) * 100,
+                          100,
+                        )}%`,
+                        backgroundColor:
+                          password.length < 6
+                            ? colors.error
+                            : password.length < 10
+                              ? colors.warning
+                              : colors.success,
+                      },
                     ]}
                   />
                 </View>
                 <Text style={styles.strengthText}>
-                  {password.length < 6 ? "Weak" :
-                   password.length < 10 ? "Medium" : "Strong"}
+                  {password.length < 6
+                    ? "Weak"
+                    : password.length < 10
+                      ? "Medium"
+                      : "Strong"}
                 </Text>
               </View>
             )}
 
-            {/* Terms and Conditions */}
-            <TouchableOpacity 
+            {/* Terms and Conditions
+            <TouchableOpacity
               style={styles.termsContainer}
               onPress={() => setAgreedToTerms(!agreedToTerms)}
             >
-              <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+              <View
+                style={[
+                  styles.checkbox,
+                  agreedToTerms && styles.checkboxChecked,
+                ]}
+              >
                 {agreedToTerms && (
                   <FontAwesome6 name="check" size={12} color={colors.white} />
                 )}
@@ -275,7 +274,7 @@ export default function SignupScreen() {
                 I agree to the{" "}
                 <Text style={styles.termsLink}>Terms and Conditions</Text>
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Sign Up Button */}
             <TouchableOpacity
@@ -339,6 +338,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.gray[200],
   },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  brandName: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: colors.white,
+    marginBottom: 4,
+  },
   formCard: {
     backgroundColor: colors.white,
     borderRadius: 24,
@@ -361,6 +380,10 @@ const styles = StyleSheet.create({
   socialButtonsRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 30,
   },
   socialButton: {
     flex: 1,

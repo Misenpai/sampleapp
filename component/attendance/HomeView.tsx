@@ -33,6 +33,7 @@ interface HomeViewProps {
   totalPhotos: number;
   selectedLocationLabel: string | null;
   todayAttendanceMarked?: boolean;
+   canSelectLocation: boolean;
 }
 
 // Session Time Display Component
@@ -376,13 +377,18 @@ export function HomeView({
   totalPhotos,
   selectedLocationLabel,
   todayAttendanceMarked = false,
+  canSelectLocation,
 }: HomeViewProps) {
   const [devModeEnabled, setDevModeEnabled] = useState(false);
   const [forceShowAttendance, setForceShowAttendance] = useState(false);
 
+  const { userLocationType } = useAttendanceStore();
   const attendanceRecords = useAttendanceStore(
     (state) => state.attendanceRecords
   );
+
+  // Disable department selection for non-ABSOLUTE users
+  const showLocationSelector = userLocationType === 'ABSOLUTE';
 
   const todayDateString = new Date().toISOString().split("T")[0];
   const todayRecord = attendanceRecords.find(
@@ -491,11 +497,22 @@ export function HomeView({
               <View style={styles.headerTextContainer}>
                 <Text style={styles.greeting}>Good {getTimeOfDay()}!</Text>
                 <Text style={styles.headerTitle}>Attendance Status</Text>
+                {/* Show location based on type */}
                 <Text style={styles.headerSubtitle}>
-                  {selectedLocationLabel
+                  {userLocationType === 'APPROX'
+                    ? '📍 IIT Guwahati'
+                    : userLocationType === 'FIELDTRIP'
+                    ? '📍 Field Trip'
+                    : showLocationSelector && selectedLocationLabel
                     ? `📍 ${selectedLocationLabel}`
-                    : "📍 Auto-detecting location..."}
+                    : '📍 Auto-detecting location...'}
                 </Text>
+                {/* Location type badge */}
+                <View style={styles.locationTypeBadge}>
+                  <Text style={styles.locationTypeText}>
+                    Mode: {userLocationType || 'ABSOLUTE'}
+                  </Text>
+                </View>
               </View>
               <View style={styles.headerIcon}>
                 <FontAwesome6
@@ -607,11 +624,22 @@ export function HomeView({
                   <Text style={styles.testModeIndicator}> (Test Mode)</Text>
                 )}
               </Text>
+              {/* Show location based on type */}
               <Text style={styles.headerSubtitle}>
-                {selectedLocationLabel
+                {userLocationType === 'APPROX'
+                  ? '📍 IIT Guwahati'
+                  : userLocationType === 'FIELDTRIP'
+                  ? '📍 Field Trip'
+                  : showLocationSelector && selectedLocationLabel
                   ? `📍 ${selectedLocationLabel}`
-                  : "📍 Auto-detecting location..."}
+                  : '📍 Auto-detecting location...'}
               </Text>
+              {/* Location type badge */}
+              <View style={styles.locationTypeBadge}>
+                <Text style={styles.locationTypeText}>
+                  Mode: {userLocationType || 'ABSOLUTE'}
+                </Text>
+              </View>
             </View>
             <View style={styles.headerIcon}>
               <FontAwesome6
@@ -999,5 +1027,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.warning,
     fontWeight: "normal",
+  },
+  // Location Type Badge Styles
+  locationTypeBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  locationTypeText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: "600",
   },
 });

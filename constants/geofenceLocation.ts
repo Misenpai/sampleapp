@@ -47,3 +47,13 @@ export const GEOFENCE_LOCATIONS: GeofenceLocation[] = [
     radius: 5,
   },
 ];
+
+export const IIT_GUWAHATI_LOCATION: GeofenceLocation = {
+  id: "iit-guwahati",
+  label: "IIT Guwahati",
+  center: {
+    lat: 26.1923, // 26°11'10.8"N
+    lng: 91.6951, // 91°44'43.2"E
+  },
+  radius: 2000, // 500 meters for campus
+};

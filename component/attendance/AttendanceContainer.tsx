@@ -1,14 +1,19 @@
 // component/attendance/AttendanceContainer.tsx
+import { FontAwesome6 } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, ListRenderItem } from "react-native";
+import { Alert, AppState, FlatList, ListRenderItem, Text, View } from "react-native";
 
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence } from "@/hooks/useGeofence";
 import { useAttendanceStore } from "@/store/attendanceStore";
 import { useAuthStore } from "@/store/authStore";
 
-import { GEOFENCE_LOCATIONS } from "@/constants/geofenceLocation";
-import { attendanceContainerStyles, globalStyles } from "@/constants/style";
+import { colors } from "@/constants/colors";
+import {
+  attendanceContainerStyles,
+  globalStyles,
+} from "@/constants/style";
 
 import { useLocationStore } from "../../store/locationStore";
 import { AudioRecorder } from "../audio/AudioRecorder";
@@ -46,31 +51,37 @@ export function AttendanceContainer() {
     resetAll,
     todayAttendanceMarked,
     checkTodayAttendance,
+    // ✅ Added
+    userLocationType,
+    isFieldTrip,
+    checkFieldTripStatus,
   } = useAttendanceStore();
 
-  // Get auth state to check if user is logged in
   const { session, userName } = useAuthStore();
-
   const camera = useCamera();
   const { selectedGeofenceId, selectedLocationLabel: locationStoreLabel } =
     useLocationStore();
 
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [isMapTouched, setIsMapTouched] = useState(false);
-  const geofence = useGeofence(selectedGeofenceId);
 
-  // Initialize user ID only if user is logged in
+  // ✅ Pass location type & field trip status
+  const geofence = useGeofence(selectedGeofenceId, userLocationType, isFieldTrip);
+
   useEffect(() => {
     if (session && userName && !isInitialized) {
       initializeUserId();
     }
   }, [session, userName, isInitialized, initializeUserId]);
 
-  // Use useCallback to memoize the function
+  useEffect(() => {
+    checkFieldTripStatus();
+  }, [checkFieldTripStatus]);
+
+  const canSelectLocation = userLocationType === "ABSOLUTE";
+
   const updateSelectedLocationLabel = useCallback(
-    (label: string) => {
-      setSelectedLocationLabel(label);
-    },
+    (label: string) => setSelectedLocationLabel(label),
     [setSelectedLocationLabel]
   );
 
@@ -81,16 +92,36 @@ export function AttendanceContainer() {
   }, [locationStoreLabel, selectedGeofenceId, updateSelectedLocationLabel]);
 
   useEffect(() => {
-    const checkAttendance = () => {
-      const isMarked = checkTodayAttendance();
-      // Update the state if needed
-    };
-    checkAttendance();
+    checkTodayAttendance();
   }, [checkTodayAttendance]);
 
+    useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      if (session && userName) {
+        checkFieldTripStatus();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [session, userName, checkFieldTripStatus]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && session && userName) {
+        checkFieldTripStatus();
+      }
+    });
+
+    return () => subscription?.remove();
+  }, [session, userName, checkFieldTripStatus]);
+
+
+  // ✅ Updated with first snippet logic
   const resolveAttendanceLocation = () => {
-    if (selectedLocationLabel) {
-      const fence = GEOFENCE_LOCATIONS.find(
+    const activeLocations = geofence.activeGeofenceLocations;
+
+    if (selectedLocationLabel && canSelectLocation) {
+      const fence = activeLocations.find(
         (g) => g.label === selectedLocationLabel
       );
       if (fence && geofence.userPos) {
@@ -107,15 +138,12 @@ export function AttendanceContainer() {
         const inside = R * c <= fence.radius;
         if (inside) return selectedLocationLabel;
 
-        // If outside the selected location
         return `Outside (${selectedLocationLabel})`;
       }
-
-      // If we can't determine, default to outside selected location
       return `Outside (${selectedLocationLabel})`;
     }
 
-    for (const g of GEOFENCE_LOCATIONS) {
+    for (const g of activeLocations) {
       if (!geofence.userPos) break;
       const R = 6371000;
       const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -130,15 +158,14 @@ export function AttendanceContainer() {
       if (R * c <= g.radius) return g.label;
     }
 
-    return "Outside (Unknown Location)";
+    return userLocationType === "APPROX"
+      ? "Outside (IIT Guwahati)"
+      : "Outside (Unknown Location)";
   };
-
-  // Update in AttendanceContainer.tsx - handleUpload function
 
   const handleUpload = async () => {
     const finalLocation = resolveAttendanceLocation();
 
-    // Double-check userId exists before uploading
     if (!userId) {
       Alert.alert("Error", "Please login to mark attendance");
       return;
@@ -157,11 +184,8 @@ export function AttendanceContainer() {
       });
 
       if (result.success) {
-        // Mark attendance for today
         const { markAttendanceForToday } = useAttendanceStore.getState();
         markAttendanceForToday(finalLocation);
-
-        // ✅ NEW: Force refresh server attendance data after successful upload
         await useAttendanceStore.getState().fetchTodayAttendanceFromServer();
 
         Alert.alert("Success", "Attendance recorded!", [
@@ -191,35 +215,47 @@ export function AttendanceContainer() {
         mapCenter={geofence.mapCenter}
       />
     ),
-    [
-      geofence.html,
-      geofence.userPos,
-      geofence.initialPos,
-      geofence.isInitialized,
-      geofence.mapShapes,
-      geofence.mapLayers,
-      geofence.mapMarkers,
-      geofence.mapCenter,
-    ]
+    [geofence]
   );
 
-  // Check if we're still loading
   if (isLoadingUserId) return <LoadingScreen text="Loading..." />;
-
-  // Check if user is not logged in (after initialization)
-  if (isInitialized && !userId) {
-    // This shouldn't happen as the auth gate should redirect to login
-    // But just in case, we show a message
+  if (isInitialized && !userId)
     return (
       <LoadingScreen text="Please login to continue" subtext="Redirecting..." />
     );
-  }
-
   if (!camera.permission?.granted)
     return <PermissionScreen onRequestPermission={camera.requestPermission} />;
-
   if (uploading)
     return <LoadingScreen text="Uploading..." subtext="Please wait" />;
+
+  if (isFieldTrip) {
+    return (
+      <View style={attendanceContainerStyles.fieldTripContainer}>
+        <LinearGradient
+          colors={[colors.success, "#059669"]}
+          style={attendanceContainerStyles.fieldTripGradient}
+        >
+          <FontAwesome6 name="route" size={48} color={colors.white} />
+          <Text style={attendanceContainerStyles.fieldTripTitle}>
+            Field Trip Mode
+          </Text>
+          <Text style={attendanceContainerStyles.fieldTripText}>
+            Your attendance is automatically marked while on field trip
+          </Text>
+          <View style={attendanceContainerStyles.fieldTripInfo}>
+            <FontAwesome6
+              name="calendar-check"
+              size={20}
+              color={colors.white}
+            />
+            <Text style={attendanceContainerStyles.fieldTripDate}>
+              Attendance marked for today
+            </Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   if (showExpandedMap)
     return (
@@ -251,13 +287,8 @@ export function AttendanceContainer() {
             const next = [...photos];
             next[currentPhotoIndex] = photo;
             setPhotos(next);
-
-            if (retakeMode) {
-              setCurrentView("home");
-              setRetakeMode(false);
-            } else {
-              setCurrentView("home");
-            }
+            setCurrentView("home");
+            setRetakeMode(false);
           }}
           onBack={() => {
             setCurrentView("home");
@@ -288,8 +319,6 @@ export function AttendanceContainer() {
                 photos={photos}
                 audioRecording={audioRecording}
                 onTakePhotos={() => {
-                  console.log("Starting photo capture process");
-                  // Generate new photo position when starting to take photos
                   const { generateNewPhotoPosition } =
                     useAttendanceStore.getState();
                   generateNewPhotoPosition();
@@ -312,6 +341,7 @@ export function AttendanceContainer() {
                 totalPhotos={TOTAL_PHOTOS}
                 selectedLocationLabel={selectedLocationLabel}
                 todayAttendanceMarked={todayAttendanceMarked}
+                canSelectLocation={canSelectLocation}
               />
             );
           default:

@@ -34,9 +34,13 @@ export const GeofenceMap = React.memo(function GeofenceMap({
     );
   }
 
+  // Create a unique key based on map data to force re-render when location type changes
+  const mapKey = `${mapCenter?.lat}-${mapCenter?.lng}-${mapShapes.length}`;
+
   return (
     <View style={mapStyles.container}>
       <LeafletView
+        key={mapKey} // Forces re-render when location type changes
         source={{ html }}
         mapCenterPosition={mapCenter}
         zoom={20}

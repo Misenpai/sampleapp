@@ -1,14 +1,14 @@
-import { colors } from '@/constants/colors';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import { CameraCapturedPicture } from 'expo-camera';
-import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors } from "@/constants/colors";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { CameraCapturedPicture } from "expo-camera";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
 interface ActionButtonsProps {
   photos: CameraCapturedPicture[];
@@ -44,7 +44,6 @@ export function ActionButtons({
   };
 
   const isComplete = photos.length === totalPhotos;
-  
 
   return (
     <View style={styles.container}>
@@ -88,10 +87,10 @@ export function ActionButtons({
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <FontAwesome6 
-                name={uploading ? "spinner" : "cloud-arrow-up"} 
-                size={20} 
-                color={colors.white} 
+              <FontAwesome6
+                name={uploading ? "spinner" : "cloud-arrow-up"}
+                size={20}
+                color={colors.white}
               />
               <Text style={styles.primaryButtonText}>
                 {uploading ? "Uploading..." : "Submit Attendance"}
@@ -99,11 +98,12 @@ export function ActionButtons({
             </LinearGradient>
           </AnimatedPressable>
 
-          <Pressable
-            onPress={onRetakeAll}
-            style={styles.secondaryButton}
-          >
-            <FontAwesome6 name="arrow-rotate-left" size={18} color={colors.error} />
+          <Pressable onPress={onRetakeAll} style={styles.secondaryButton}>
+            <FontAwesome6
+              name="arrow-rotate-left"
+              size={18}
+              color={colors.error}
+            />
             <Text style={styles.secondaryButtonText}>Retake</Text>
           </Pressable>
         </View>

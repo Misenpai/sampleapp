@@ -1,25 +1,22 @@
-import { useAuthStore } from "@/store/authStore";
 import { colors } from "@/constants/colors";
+import { useAuthStore } from "@/store/authStore";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import Animated, { 
-  FadeInDown, 
-  FadeInUp 
-} from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
@@ -55,24 +52,27 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* Logo/Brand Section */}
-          <Animated.View 
+          <Animated.View
             entering={FadeInDown.delay(100).springify()}
             style={styles.logoContainer}
           >
             <View style={styles.logoCircle}>
-              <FontAwesome6 name="fingerprint" size={50} color={colors.primary[500]} />
+              <FontAwesome6
+                name="fingerprint"
+                size={50}
+                color={colors.primary[500]}
+              />
             </View>
-            <Text style={styles.brandName}>AttendEase</Text>
-            <Text style={styles.tagline}>Smart Attendance Management</Text>
+            <Text style={styles.brandName}>Attendance</Text>
           </Animated.View>
 
           {/* Login Form Card */}
-          <Animated.View 
+          <Animated.View
             entering={FadeInUp.delay(200).springify()}
             style={styles.formCard}
           >
@@ -81,10 +81,10 @@ export default function LoginScreen() {
 
             {/* Username Input */}
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="user" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="user"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -100,10 +100,10 @@ export default function LoginScreen() {
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <FontAwesome6 
-                name="lock" 
-                size={20} 
-                color={colors.gray[400]} 
+              <FontAwesome6
+                name="lock"
+                size={20}
+                color={colors.gray[400]}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -114,40 +114,21 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeIcon}
               >
-                <FontAwesome6 
-                  name={showPassword ? "eye" : "eye-slash"} 
-                  size={20} 
-                  color={colors.gray[400]} 
+                <FontAwesome6
+                  name={showPassword ? "eye" : "eye-slash"}
+                  size={20}
+                  color={colors.gray[400]}
                 />
               </TouchableOpacity>
             </View>
 
-            {/* Remember Me & Forgot Password */}
-            <View style={styles.optionsRow}>
-              <TouchableOpacity 
-                style={styles.rememberContainer}
-                onPress={() => setRememberMe(!rememberMe)}
-              >
-                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && (
-                    <FontAwesome6 name="check" size={12} color={colors.white} />
-                  )}
-                </View>
-                <Text style={styles.rememberText}>Remember me</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={handleForgotPassword}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            </View>
-
             {/* Login Button */}
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -164,40 +145,11 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.divider} />
-            </View>
-
-            {/* Social Login Buttons */}
-            <View style={styles.socialContainer}>
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Google")}
-              >
-                <FontAwesome6 name="google" size={24} color="#DB4437" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Apple")}
-              >
-                <FontAwesome6 name="apple" size={24} color={colors.black} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Microsoft")}
-              >
-                <FontAwesome6 name="microsoft" size={24} color="#00A4EF" />
-              </TouchableOpacity>
-            </View>
-
             {/* Sign Up Link */}
             <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>Don&apos;t have an account? </Text>
+              <Text style={styles.signupText}>
+                Don&apos;t have an account?{" "}
+              </Text>
               <Link href="/(auth)/signup" asChild>
                 <TouchableOpacity>
                   <Text style={styles.signupLink}>Sign Up</Text>

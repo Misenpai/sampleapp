@@ -4,10 +4,10 @@ import { Pressable, Text, View, StyleSheet } from "react-native";
 import { colors } from "@/constants/colors";
 import { AudioRecording } from "../../types/attendance";
 import { AudioPlayer } from "../audio/AudioPlayer";
-import Animated, { 
-  useAnimatedStyle, 
-  withRepeat, 
-  withSequence, 
+import Animated, {
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
   withTiming,
   useSharedValue,
   withSpring,
@@ -32,9 +32,9 @@ export function AudioSection({
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(1.1, { duration: 1000 }),
-          withTiming(1, { duration: 1000 })
+          withTiming(1, { duration: 1000 }),
         ),
-        -1
+        -1,
       );
     }
   }, [audioRecording]);
@@ -61,7 +61,11 @@ export function AudioSection({
         <View style={styles.recordedCard}>
           <View style={styles.recordedHeader}>
             <View style={styles.recordedIconContainer}>
-              <FontAwesome6 name="circle-check" size={20} color={colors.success} />
+              <FontAwesome6
+                name="circle-check"
+                size={20}
+                color={colors.success}
+              />
             </View>
             <Text style={styles.recordedText}>Audio Recorded</Text>
           </View>
@@ -76,12 +80,18 @@ export function AudioSection({
         >
           <Animated.View style={[styles.pulseCircle, pulseStyle]}>
             <View style={styles.iconCircle}>
-              <FontAwesome6 name="microphone" size={24} color={colors.primary[500]} />
+              <FontAwesome6
+                name="microphone"
+                size={24}
+                color={colors.primary[500]}
+              />
             </View>
           </Animated.View>
           <View style={styles.recordTextContainer}>
             <Text style={styles.recordButtonText}>Tap to Record</Text>
-            <Text style={styles.recordHintText}>Say today&apos;s date clearly</Text>
+            <Text style={styles.recordHintText}>
+              Say today&apos;s date clearly
+            </Text>
           </View>
         </AnimatedPressable>
       )}

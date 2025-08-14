@@ -17,9 +17,7 @@ export function ExpandedMapView({
       <Pressable onPress={onClose} style={expandedMapStyles.closeButton}>
         <FontAwesome6 name="xmark" size={24} color="white" />
       </Pressable>
-      <View style={expandedMapStyles.mapContainer}>
-        {mapComponent}
-      </View>
+      <View style={expandedMapStyles.mapContainer}>{mapComponent}</View>
     </View>
   );
 }
