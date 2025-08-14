@@ -37,18 +37,35 @@ export const GeofenceMap = React.memo(function GeofenceMap({
   // Create a unique key based on map data to force re-render when location type changes
   const mapKey = `${mapCenter?.lat}-${mapCenter?.lng}-${mapShapes.length}`;
 
-  return (
-    <View style={mapStyles.container}>
-      <LeafletView
-        key={mapKey} // Forces re-render when location type changes
-        source={{ html }}
-        mapCenterPosition={mapCenter}
-        zoom={20}
-        mapLayers={mapLayers}
-        mapShapes={mapShapes}
-        mapMarkers={mapMarkers}
-        doDebug={false}
-      />
-    </View>
-  );
+  if (mapKey === "26.1923-91.6951-1") {
+    return (
+      <View style={mapStyles.container}>
+        <LeafletView
+          key={mapKey} // Forces re-render when location type changes
+          source={{ html }}
+          mapCenterPosition={mapCenter}
+          zoom={13.2}
+          mapLayers={mapLayers}
+          mapShapes={mapShapes}
+          mapMarkers={mapMarkers}
+          doDebug={false}
+        />
+      </View>
+    );
+  } else {
+    return (
+      <View style={mapStyles.container}>
+        <LeafletView
+          key={mapKey} // Forces re-render when location type changes
+          source={{ html }}
+          mapCenterPosition={mapCenter}
+          zoom={20}
+          mapLayers={mapLayers}
+          mapShapes={mapShapes}
+          mapMarkers={mapMarkers}
+          doDebug={false}
+        />
+      </View>
+    );
+  }
 });

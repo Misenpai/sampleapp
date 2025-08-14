@@ -100,8 +100,7 @@ export function AttendanceContainer() {
       if (session && userName) {
         checkFieldTripStatus();
       }
-    }, 30000); // Refresh every 30 seconds
-
+    }, 1000);
     return () => clearInterval(refreshInterval);
   }, [session, userName, checkFieldTripStatus]);
 
