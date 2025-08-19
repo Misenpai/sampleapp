@@ -276,6 +276,11 @@ export function useGeofence(
     };
   }, [checkGeofences]);
 
+    const requestPermission = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    return status === 'granted';
+  };
+
   return {
     html,
     userPos,
@@ -288,5 +293,6 @@ export function useGeofence(
     mapCenter: mapCenter || initialPos,
     activeGeofenceLocations,
     canSelectLocation: userLocationType === "ABSOLUTE",
+    requestPermission,
   };
 }

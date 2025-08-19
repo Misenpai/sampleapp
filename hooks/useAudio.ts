@@ -169,6 +169,12 @@ export function useAudio() {
     });
   };
 
+    const requestPermission = async () => {
+    const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+    setAudioPermission(granted);
+    return granted;
+  };
+
   return {
     audioPermission,
     recorderState,
@@ -180,5 +186,6 @@ export function useAudio() {
     stopAudio, // Add this missing method
     deleteRecording,
     setCurrentRecording,
+    requestPermission
   };
 }

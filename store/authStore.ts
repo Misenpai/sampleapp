@@ -8,202 +8,138 @@ import { clearUserData, getUserData, storeUserData } from '../services/UserId';
 import { useAttendanceStore } from './attendanceStore';
 
 interface AuthState {
-  // State
   session: string | null;
   userName: string | null;
   userId: string | null;
   isLoading: boolean;
   isInitialized: boolean;
-  hasAcceptedTerms: boolean;
-  isSettingUpPermissions: boolean;
+  hasAcceptedTerms: boolean; // NEW
 
-  // Actions
   signIn: (username: string, password: string) => Promise<void>;
   signUp: (empId: string, name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   setLoading: (loading: boolean) => void;
-  acceptTerms: () => Promise<void>;
-  setSettingUpPermissions: (setting: boolean) => void;
+  acceptTerms: () => Promise<void>; // NEW
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // Initial state
       session: null,
       userName: null,
       userId: null,
       isLoading: true,
       isInitialized: false,
-      hasAcceptedTerms: false,
-      isSettingUpPermissions: false,
+      hasAcceptedTerms: false, // NEW
 
-      // Initialize auth from storage
       initializeAuth: async () => {
         try {
-          const userData = await getUserData();
-          if (userData && userData.isLoggedIn) {
-            set({
-              session: userData.userId,
-              userName: userData.name,
-              userId: userData.userId,
-              isInitialized: true,
-              isLoading: false,
-              hasAcceptedTerms: userData.hasAcceptedTerms || false,
-            });
-            
-            // Sync with attendance store
-            useAttendanceStore.getState().setUserId(userData.name);
-          } else {
-            set({
-              isInitialized: true,
-              isLoading: false,
-            });
-          }
-        } catch (error) {
-          console.error("Error checking existing session:", error);
+          const [userData, accepted] = await Promise.all([
+            getUserData(),
+            AsyncStorage.getItem('hasAcceptedTerms'),
+          ]);
+
           set({
-            isInitialized: true,
-            isLoading: false,
+            hasAcceptedTerms: accepted === 'true',
+            ...(userData?.isLoggedIn
+              ? {
+                  session: userData.userId,
+                  userName: userData.name,
+                  userId: userData.userId,
+                  isLoading: false,
+                  isInitialized: true,
+                }
+              : { isLoading: false, isInitialized: true }),
           });
+
+          if (userData?.isLoggedIn)
+            useAttendanceStore.getState().setUserId(userData.name);
+        } catch (e) {
+          set({ isLoading: false, isInitialized: true });
         }
       },
 
-      // Sign in action
-      signIn: async (username: string, password: string) => {
+      acceptTerms: async () => {
+        await AsyncStorage.setItem('hasAcceptedTerms', 'true');
+        set({ hasAcceptedTerms: true });
+      },
+
+      signIn: async (username, password) => {
         set({ isLoading: true });
         try {
-          console.log('Starting sign in process...');
-          const result = await loginUser(username, password);
-          console.log('Login result:', result);
-          
-          if (result.success && result.user) {
-            const userData = {
-              userId: result.user.id,
-              name: result.user.username,
-              email: result.user.email,
+          const res = await loginUser(username, password);
+          if (res.success && res.user) {
+            await storeUserData({
+              userId: res.user.id,
+              name: res.user.username,
+              email: res.user.email,
               isLoggedIn: true,
-              hasAcceptedTerms: false
-            };
-            
-            await storeUserData(userData);
-            
-            set({
-              session: result.user.id,
-              userName: result.user.username,
-              userId: result.user.id,
-              isLoading: false,
-              hasAcceptedTerms: false, // New users haven't accepted terms yet
             });
-            
-            // IMPORTANT: Sync with attendance store after successful login
-            useAttendanceStore.getState().setUserId(result.user.username);
-            
-            Alert.alert("Success", "Logged in successfully!");
+            set({
+              session: res.user.id,
+              userName: res.user.username,
+              userId: res.user.id,
+              isLoading: false,
+            });
+            useAttendanceStore.getState().setUserId(res.user.username);
+            Alert.alert('Success', 'Logged in successfully!');
           } else {
             set({ isLoading: false });
-            Alert.alert("Login Failed", result.error || "Unknown error occurred");
+            Alert.alert('Login Failed', res.error || 'Unknown error');
           }
-        } catch (error) {
-          console.error("Sign in error:", error);
+        } catch {
           set({ isLoading: false });
-          Alert.alert("Error", "An unexpected error occurred during login");
+          Alert.alert('Error', 'Unexpected error during login');
         }
       },
 
-      // Sign up action
-      signUp: async (empId: string, name: string, email: string, password: string) => {
+      signUp: async (empId, name, email, password) => {
         set({ isLoading: true });
         try {
-          console.log('Starting sign up process...');
-          const result = await signupUser(empId, name, email, password);
-          console.log('Signup result:', result);
-          
-          if (result.success && result.user) {
-            const userData = {
-              userId: result.user.id,
-              name: result.user.username,
-              email: result.user.email,
+          const res = await signupUser(empId, name, email, password);
+          if (res.success && res.user) {
+            await storeUserData({
+              userId: res.user.id,
+              name: res.user.username,
+              email: res.user.email,
               isLoggedIn: true,
-              hasAcceptedTerms: false
-            };
-            
-            await storeUserData(userData);
-            
-            set({
-              session: result.user.id,
-              userName: result.user.username,
-              userId: result.user.id,
-              isLoading: false,
-              hasAcceptedTerms: false, // New users haven't accepted terms yet
             });
-            
-            // IMPORTANT: Sync with attendance store after successful signup
-            useAttendanceStore.getState().setUserId(result.user.username);
-            
-            Alert.alert("Success", "Account created successfully!");
+            set({
+              session: res.user.id,
+              userName: res.user.username,
+              userId: res.user.id,
+              isLoading: false,
+            });
+            useAttendanceStore.getState().setUserId(res.user.username);
+            Alert.alert('Success', 'Account created successfully!');
           } else {
             set({ isLoading: false });
-            Alert.alert("Signup Failed", result.error || "Unknown error occurred");
+            Alert.alert('Signup Failed', res.error || 'Unknown error');
           }
-        } catch (error) {
-          console.error("Sign up error:", error);
+        } catch {
           set({ isLoading: false });
-          Alert.alert("Error", "An unexpected error occurred during signup");
+          Alert.alert('Error', 'Unexpected error during signup');
         }
       },
 
-      // Sign out action
       signOut: async () => {
         try {
           await clearUserData();
-          
-          // Clear auth state
+          await AsyncStorage.removeItem('hasAcceptedTerms'); // NEW
           set({
             session: null,
             userName: null,
             userId: null,
             hasAcceptedTerms: false,
-            isSettingUpPermissions: false,
           });
-          
-          // IMPORTANT: Clear attendance store as well
           useAttendanceStore.getState().clearUserId();
-          
-        } catch (error) {
-          console.error("Error signing out:", error);
+        } catch (e) {
+          console.error(e);
         }
       },
 
-      // Set loading state
-      setLoading: (loading: boolean) => set({ isLoading: loading }),
-
-      // Accept terms and update user data
-      acceptTerms: async () => {
-        const state = get();
-        if (state.userName) {
-          try {
-            // Update stored user data to include terms acceptance
-            const currentUserData = await getUserData();
-            if (currentUserData) {
-              const updatedUserData = {
-                ...currentUserData,
-                hasAcceptedTerms: true
-              };
-              await storeUserData(updatedUserData);
-            }
-            set({ hasAcceptedTerms: true });
-          } catch (error) {
-            console.error("Error updating terms acceptance:", error);
-            // Still set in memory even if storage fails
-            set({ hasAcceptedTerms: true });
-          }
-        }
-      },
-
-      // Set permissions setup state
-      setSettingUpPermissions: (setting: boolean) => set({ isSettingUpPermissions: setting }),
+      setLoading: (loading) => set({ isLoading: loading }),
     }),
     {
       name: 'auth-storage',
