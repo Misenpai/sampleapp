@@ -1,4 +1,4 @@
-import { AttendanceContainer } from '@/component/attendance/AttendanceContainer';
+import  {AttendanceContainer}  from '@/component/attendance/AttendanceContainer';
 import { globalStyles } from '@/constants/style';
 import React from 'react';
 import { View } from 'react-native';

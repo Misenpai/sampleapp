@@ -130,10 +130,10 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     setSelectedYear(month.year);
   };
 
-  // Helper to check if a date is a field trip date
+  // Helper to check if a date is a field trip date - regardless of current location type
   const isFieldTripDate = useCallback(
     (dateStr: string) => {
-      if (userLocationType !== "FIELDTRIP") return false;
+      // Check field trip dates regardless of current userLocationType
       return fieldTripDates.some((trip) => {
         const start = new Date(trip.startDate);
         const end = new Date(trip.endDate);
@@ -141,15 +141,16 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         return checkDate >= start && checkDate <= end;
       });
     },
-    [fieldTripDates, userLocationType],
+    [fieldTripDates], // Removed userLocationType dependency
   );
 
   // Enhanced marked dates with field trip styling
   const getEnhancedMarkedDates = useCallback(() => {
     const marked = getMarkedDates(attendanceDates);
 
-    // Apply field trip styling
-    if (userLocationType === "FIELDTRIP" && fieldTripDates.length > 0) {
+    // Apply field trip styling regardless of current userLocationType
+    // This ensures field trip dates remain visible even when switching location types
+    if (fieldTripDates.length > 0) {
       Object.keys(marked).forEach((dateStr) => {
         if (isFieldTripDate(dateStr)) {
           marked[dateStr] = {
@@ -195,7 +196,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     }
 
     return marked;
-  }, [attendanceDates, fieldTripDates, userLocationType, isFieldTripDate]);
+  }, [attendanceDates, fieldTripDates, isFieldTripDate]); // Removed userLocationType dependency
 
   const renderStatisticsCard = () => {
     if (!statistics) return null;
@@ -288,7 +289,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const renderSelectedDateInfo = () => {
     if (!selectedDate) return null;
 
-    // Check if it's a field trip date first
+    // Check if it's a field trip date first (regardless of current userLocationType)
     if (isFieldTripDate(selectedDate)) {
       return (
         <Animated.View
@@ -325,7 +326,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
               />
               <Text style={styles.attendanceDetailLabel}>Status:</Text>
               <Text style={styles.attendanceDetailValue}>
-                Field trip day - no attendance required
+                {userLocationType === "FIELDTRIP"
+                  ? "Field trip day - no attendance required"
+                  : "Scheduled field trip (location type changed)"}
               </Text>
             </View>
           </View>
@@ -499,11 +502,11 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         <Text style={styles.calendarTitle}>Attendance Calendar</Text>
 
         <Calendar
-          key={`${refreshKey}-${userLocationType}`}
+          key={`${refreshKey}-${userLocationType}-${fieldTripDates.length}`}
           current={`${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`}
           onDayPress={onDayPress}
           onMonthChange={onMonthChange}
-          markingType="custom" // ⬅️ Add this so customStyles will work
+          markingType="custom"
           markedDates={{
             ...getEnhancedMarkedDates(),
             [selectedDate]: {
@@ -560,7 +563,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             />
             <Text style={styles.legendText}>In Progress</Text>
           </View>
-          {userLocationType === "FIELDTRIP" && (
+          {/* Show field trip legend when there are field trip dates, regardless of current location type */}
+          {fieldTripDates.length > 0 && (
             <View style={styles.legendItem}>
               <View
                 style={[styles.legendDot, { backgroundColor: "#9CA3AF" }]}
