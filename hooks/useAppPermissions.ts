@@ -1,7 +1,6 @@
 // hooks/useAppPermissions.ts
 import { useCameraPermissions } from "expo-camera";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-native";
 import { permissionsService, PermissionStatus } from "../services/permissionsService";
 
 export interface AppPermissionsHook {
@@ -30,12 +29,12 @@ export function useAppPermissions(): AppPermissionsHook {
   const checkPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      const audioPermissions = await permissionsService.checkAllPermissions();
+      const audioAndLocationPermissions = await permissionsService.checkAllPermissions();
       
       const currentPermissions: PermissionStatus = {
         camera: cameraPermission?.granted || false,
-        audio: audioPermissions.audio,
-        location: audioPermissions.location,
+        audio: audioAndLocationPermissions.audio,
+        location: audioAndLocationPermissions.location,
         allGranted: false,
       };
       
@@ -45,6 +44,13 @@ export function useAppPermissions(): AppPermissionsHook {
         currentPermissions.location;
       
       setPermissions(currentPermissions);
+      
+      console.log("Current permissions status:", {
+        camera: currentPermissions.camera,
+        audio: currentPermissions.audio,
+        location: currentPermissions.location,
+        allGranted: currentPermissions.allGranted
+      });
     } catch (error) {
       console.error("Error checking permissions:", error);
     } finally {
@@ -52,64 +58,79 @@ export function useAppPermissions(): AppPermissionsHook {
     }
   }, [cameraPermission?.granted]);
 
-  // Request all permissions
+  // Request all permissions sequentially
   const requestAllPermissions = useCallback(async (): Promise<boolean> => {
+    console.log("=== Starting requestAllPermissions ===");
+    
+    if (isRequestingPermissions) {
+      console.log("Already requesting permissions, returning false");
+      return false;
+    }
+    
     setIsRequestingPermissions(true);
+    
     try {
-      console.log("Requesting all permissions...");
-      
-      // Request camera permission first
-      const cameraResult = await requestCameraPermission();
-      if (!cameraResult?.granted) {
-        Alert.alert(
-          "Camera Permission Required",
-          "Camera access is required to capture attendance photos. Please grant camera permission to continue.",
-          [{ text: "OK" }]
-        );
-        setIsRequestingPermissions(false);
-        await checkPermissions();
-        return false;
-      }
+      let cameraGranted = false;
+      let audioGranted = false;
+      let locationGranted = false;
 
-      // Request other permissions
-      const result = await permissionsService.requestAllPermissions();
-      
-      if (!result.success) {
-        if (result.error) {
-          Alert.alert("Permission Required", result.error, [{ text: "OK" }]);
+      // Step 1: Request camera permission
+      console.log("Step 1: Requesting camera permission...");
+      try {
+        const cameraResult = await requestCameraPermission();
+        cameraGranted = cameraResult?.granted || false;
+        console.log("Camera permission result:", cameraGranted);
+        
+        if (!cameraGranted) {
+          console.log("Camera permission was denied");
         }
-        await checkPermissions();
-        return false;
+      } catch (error) {
+        console.error("Error requesting camera permission:", error);
+        cameraGranted = false;
       }
 
-      // Final check
-      await checkPermissions();
-      
-      const finalCheck = await permissionsService.checkAllPermissions();
-      const allGranted = cameraResult?.granted && finalCheck.allGranted;
-      
-      if (!allGranted) {
-        Alert.alert(
-          "Permissions Required",
-          "All permissions (Camera, Microphone, and Location) are required for the app to function properly. Please grant all permissions.",
-          [{ text: "OK" }]
-        );
+      // Step 2: Request audio and location permissions
+      console.log("Step 2: Requesting audio and location permissions...");
+      try {
+        const otherPermissionsResult = await permissionsService.requestAllPermissions();
+        console.log("Other permissions result:", otherPermissionsResult);
+        
+        if (otherPermissionsResult.success) {
+          audioGranted = otherPermissionsResult.permissions.audio;
+          locationGranted = otherPermissionsResult.permissions.location;
+        }
+      } catch (error) {
+        console.error("Error requesting other permissions:", error);
       }
+
+      // Step 3: Update permission states
+      const finalPermissions: PermissionStatus = {
+        camera: cameraGranted,
+        audio: audioGranted,
+        location: locationGranted,
+        allGranted: cameraGranted && audioGranted && locationGranted
+      };
       
-      return allGranted;
+      setPermissions(finalPermissions);
+      
+      console.log("=== Final permission status ===", {
+        camera: cameraGranted,
+        audio: audioGranted,
+        location: locationGranted,
+        allGranted: finalPermissions.allGranted
+      });
+      
+      // Don't show alert here - let the parent component handle it
+      return finalPermissions.allGranted;
+      
     } catch (error) {
-      console.error("Error requesting permissions:", error);
-      Alert.alert(
-        "Permission Error",
-        "Failed to request permissions. Please try again.",
-        [{ text: "OK" }]
-      );
-      await checkPermissions();
+      console.error("Unexpected error in requestAllPermissions:", error);
       return false;
     } finally {
       setIsRequestingPermissions(false);
+      console.log("=== requestAllPermissions complete ===");
     }
-  }, [requestCameraPermission, checkPermissions]);
+  }, [requestCameraPermission, isRequestingPermissions]);
 
   // Check permissions on mount and when camera permission changes
   useEffect(() => {

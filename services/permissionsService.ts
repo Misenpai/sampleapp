@@ -1,4 +1,4 @@
-
+// services/permissionsService.ts
 import { AudioModule } from "expo-audio";
 import * as Location from "expo-location";
 import { Alert } from "react-native";
@@ -19,9 +19,6 @@ export interface PermissionResult {
 class PermissionsService {
   async checkAllPermissions(): Promise<PermissionStatus> {
     try {
-      // Check camera permission
-      const cameraStatus = await this.checkCameraPermission();
-      
       // Check audio permission
       const audioStatus = await this.checkAudioPermission();
       
@@ -29,11 +26,14 @@ class PermissionsService {
       const locationStatus = await this.checkLocationPermission();
 
       const permissions: PermissionStatus = {
-        camera: cameraStatus,
+        camera: false, // Camera will be checked by the hook
         audio: audioStatus,
         location: locationStatus,
-        allGranted: cameraStatus && audioStatus && locationStatus,
+        allGranted: false,
       };
+
+      // Note: Camera permission status will be set by the hook
+      permissions.allGranted = permissions.audio && permissions.location;
 
       return permissions;
     } catch (error) {
@@ -49,20 +49,12 @@ class PermissionsService {
 
   async requestAllPermissions(): Promise<PermissionResult> {
     try {
-      console.log("Starting permission requests...");
-
-      // Request camera permission
-      const cameraResult = await this.requestCameraPermission();
-      if (!cameraResult.success) {
-        return {
-          success: false,
-          permissions: await this.checkAllPermissions(),
-          error: cameraResult.error,
-        };
-      }
+      console.log("PermissionsService: Starting permission requests...");
 
       // Request audio permission
       const audioResult = await this.requestAudioPermission();
+      console.log("PermissionsService: Audio permission result:", audioResult);
+      
       if (!audioResult.success) {
         return {
           success: false,
@@ -73,6 +65,8 @@ class PermissionsService {
 
       // Request location permission
       const locationResult = await this.requestLocationPermission();
+      console.log("PermissionsService: Location permission result:", locationResult);
+      
       if (!locationResult.success) {
         return {
           success: false,
@@ -83,10 +77,14 @@ class PermissionsService {
 
       const finalPermissions = await this.checkAllPermissions();
       
+      // Note: Camera permission is handled separately by the hook
+      // We only check audio and location here
+      const success = finalPermissions.audio && finalPermissions.location;
+      
       return {
-        success: finalPermissions.allGranted,
+        success: success,
         permissions: finalPermissions,
-        error: finalPermissions.allGranted ? undefined : "Some permissions were not granted",
+        error: success ? undefined : "Some permissions were not granted",
       };
     } catch (error) {
       console.error("Error requesting permissions:", error);
@@ -98,20 +96,10 @@ class PermissionsService {
     }
   }
 
-  private async checkCameraPermission(): Promise<boolean> {
-    try {
-      // Note: We can't directly check camera permissions without using the hook
-      // This is a limitation of expo-camera. We'll handle this in the component.
-      return false; // Will be overridden by the hook in component
-    } catch (error) {
-      console.error("Error checking camera permission:", error);
-      return false;
-    }
-  }
-
   private async checkAudioPermission(): Promise<boolean> {
     try {
       const status = await AudioModule.getRecordingPermissionsAsync();
+      console.log("Audio permission check:", status);
       return status.granted;
     } catch (error) {
       console.error("Error checking audio permission:", error);
@@ -122,6 +110,7 @@ class PermissionsService {
   private async checkLocationPermission(): Promise<boolean> {
     try {
       const status = await Location.getForegroundPermissionsAsync();
+      console.log("Location permission check:", status);
       return status.granted;
     } catch (error) {
       console.error("Error checking location permission:", error);
@@ -129,22 +118,12 @@ class PermissionsService {
     }
   }
 
-  private async requestCameraPermission(): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Camera permission will be handled by the hook in the component
-      // This is just a placeholder
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: "Failed to request camera permission",
-      };
-    }
-  }
-
   private async requestAudioPermission(): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log("Requesting audio permission...");
       const status = await AudioModule.requestRecordingPermissionsAsync();
+      console.log("Audio permission request result:", status);
+      
       if (!status.granted) {
         return {
           success: false,
@@ -153,6 +132,7 @@ class PermissionsService {
       }
       return { success: true };
     } catch (error) {
+      console.error("Error requesting audio permission:", error);
       return {
         success: false,
         error: "Failed to request microphone permission",
@@ -162,7 +142,10 @@ class PermissionsService {
 
   private async requestLocationPermission(): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log("Requesting location permission...");
       const status = await Location.requestForegroundPermissionsAsync();
+      console.log("Location permission request result:", status);
+      
       if (!status.granted) {
         return {
           success: false,
@@ -171,6 +154,7 @@ class PermissionsService {
       }
       return { success: true };
     } catch (error) {
+      console.error("Error requesting location permission:", error);
       return {
         success: false,
         error: "Failed to request location permission",
