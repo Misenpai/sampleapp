@@ -14,6 +14,8 @@ interface AuthState {
   userId: string | null;
   isLoading: boolean;
   isInitialized: boolean;
+  hasAcceptedTerms: boolean;
+  isSettingUpPermissions: boolean;
 
   // Actions
   signIn: (username: string, password: string) => Promise<void>;
@@ -21,6 +23,8 @@ interface AuthState {
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   setLoading: (loading: boolean) => void;
+  acceptTerms: () => Promise<void>;
+  setSettingUpPermissions: (setting: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -32,6 +36,8 @@ export const useAuthStore = create<AuthState>()(
       userId: null,
       isLoading: true,
       isInitialized: false,
+      hasAcceptedTerms: false,
+      isSettingUpPermissions: false,
 
       // Initialize auth from storage
       initializeAuth: async () => {
@@ -44,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
               userId: userData.userId,
               isInitialized: true,
               isLoading: false,
+              hasAcceptedTerms: userData.hasAcceptedTerms || false,
             });
             
             // Sync with attendance store
@@ -76,7 +83,8 @@ export const useAuthStore = create<AuthState>()(
               userId: result.user.id,
               name: result.user.username,
               email: result.user.email,
-              isLoggedIn: true
+              isLoggedIn: true,
+              hasAcceptedTerms: false
             };
             
             await storeUserData(userData);
@@ -86,6 +94,7 @@ export const useAuthStore = create<AuthState>()(
               userName: result.user.username,
               userId: result.user.id,
               isLoading: false,
+              hasAcceptedTerms: false, // New users haven't accepted terms yet
             });
             
             // IMPORTANT: Sync with attendance store after successful login
@@ -116,7 +125,8 @@ export const useAuthStore = create<AuthState>()(
               userId: result.user.id,
               name: result.user.username,
               email: result.user.email,
-              isLoggedIn: true
+              isLoggedIn: true,
+              hasAcceptedTerms: false
             };
             
             await storeUserData(userData);
@@ -126,6 +136,7 @@ export const useAuthStore = create<AuthState>()(
               userName: result.user.username,
               userId: result.user.id,
               isLoading: false,
+              hasAcceptedTerms: false, // New users haven't accepted terms yet
             });
             
             // IMPORTANT: Sync with attendance store after successful signup
@@ -153,6 +164,8 @@ export const useAuthStore = create<AuthState>()(
             session: null,
             userName: null,
             userId: null,
+            hasAcceptedTerms: false,
+            isSettingUpPermissions: false,
           });
           
           // IMPORTANT: Clear attendance store as well
@@ -165,6 +178,32 @@ export const useAuthStore = create<AuthState>()(
 
       // Set loading state
       setLoading: (loading: boolean) => set({ isLoading: loading }),
+
+      // Accept terms and update user data
+      acceptTerms: async () => {
+        const state = get();
+        if (state.userName) {
+          try {
+            // Update stored user data to include terms acceptance
+            const currentUserData = await getUserData();
+            if (currentUserData) {
+              const updatedUserData = {
+                ...currentUserData,
+                hasAcceptedTerms: true
+              };
+              await storeUserData(updatedUserData);
+            }
+            set({ hasAcceptedTerms: true });
+          } catch (error) {
+            console.error("Error updating terms acceptance:", error);
+            // Still set in memory even if storage fails
+            set({ hasAcceptedTerms: true });
+          }
+        }
+      },
+
+      // Set permissions setup state
+      setSettingUpPermissions: (setting: boolean) => set({ isSettingUpPermissions: setting }),
     }),
     {
       name: 'auth-storage',
@@ -173,6 +212,7 @@ export const useAuthStore = create<AuthState>()(
         session: state.session,
         userName: state.userName,
         userId: state.userId,
+        hasAcceptedTerms: state.hasAcceptedTerms,
       }),
     }
   )

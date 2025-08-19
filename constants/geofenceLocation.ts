@@ -55,5 +55,5 @@ export const IIT_GUWAHATI_LOCATION: GeofenceLocation = {
     lat: 26.1923, // 26°11'10.8"N
     lng: 91.6951, // 91°44'43.2"E
   },
-  radius: 2000, // 500 meters for campus
+  radius: 1200, // 500 meters for campus
 };

@@ -8,6 +8,7 @@ export interface UserData {
   name: string;
   email: string;
   isLoggedIn: boolean;
+  hasAcceptedTerms?: boolean;
 }
 
 // This function should only be called when we know user is logged in

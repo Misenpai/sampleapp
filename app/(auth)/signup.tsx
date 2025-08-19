@@ -29,7 +29,6 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSignup = async () => {
     if (!empId.trim()) {
@@ -54,10 +53,6 @@ export default function SignupScreen() {
     }
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters long");
-      return;
-    }
-    if (!agreedToTerms) {
-      Alert.alert("Error", "Please agree to the Terms and Conditions");
       return;
     }
 

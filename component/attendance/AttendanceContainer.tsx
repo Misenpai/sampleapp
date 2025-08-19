@@ -22,7 +22,6 @@ import { ExpandedMapView } from "../map/ExpandedMapView";
 import { GeofenceMap } from "../map/GeofenceMap";
 import { MapCard } from "../map/MapCard";
 import { LoadingScreen } from "../ui/LoadingScreen";
-import { PermissionScreen } from "../ui/PermissionScreen";
 import { HomeView } from "./HomeView";
 
 type ListItem = { id: string; type: "map" | "attendance" };
@@ -51,7 +50,6 @@ export function AttendanceContainer() {
     resetAll,
     todayAttendanceMarked,
     checkTodayAttendance,
-    // ✅ Added
     userLocationType,
     isFieldTrip,
     checkFieldTripStatus,
@@ -65,7 +63,6 @@ export function AttendanceContainer() {
   const [showExpandedMap, setShowExpandedMap] = useState(false);
   const [isMapTouched, setIsMapTouched] = useState(false);
 
-  // ✅ Pass location type & field trip status
   const geofence = useGeofence(selectedGeofenceId, userLocationType, isFieldTrip);
 
   useEffect(() => {
@@ -95,7 +92,7 @@ export function AttendanceContainer() {
     checkTodayAttendance();
   }, [checkTodayAttendance]);
 
-    useEffect(() => {
+  useEffect(() => {
     const refreshInterval = setInterval(() => {
       if (session && userName) {
         checkFieldTripStatus();
@@ -114,8 +111,6 @@ export function AttendanceContainer() {
     return () => subscription?.remove();
   }, [session, userName, checkFieldTripStatus]);
 
-
-  // ✅ Updated with first snippet logic
   const resolveAttendanceLocation = () => {
     const activeLocations = geofence.activeGeofenceLocations;
 
@@ -222,8 +217,6 @@ export function AttendanceContainer() {
     return (
       <LoadingScreen text="Please login to continue" subtext="Redirecting..." />
     );
-  if (!camera.permission?.granted)
-    return <PermissionScreen onRequestPermission={camera.requestPermission} />;
   if (uploading)
     return <LoadingScreen text="Uploading..." subtext="Please wait" />;
 
