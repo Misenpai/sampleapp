@@ -33,7 +33,7 @@ interface HomeViewProps {
   totalPhotos: number;
   selectedLocationLabel: string | null;
   todayAttendanceMarked?: boolean;
-   canSelectLocation: boolean;
+  canSelectLocation: boolean;
 }
 
 // Session Time Display Component
@@ -388,7 +388,7 @@ export function HomeView({
   );
 
   // Disable department selection for non-ABSOLUTE users
-  const showLocationSelector = userLocationType === 'ABSOLUTE';
+  const showLocationSelector = userLocationType === "ABSOLUTE";
 
   const todayDateString = new Date().toISOString().split("T")[0];
   const todayRecord = attendanceRecords.find(
@@ -499,18 +499,24 @@ export function HomeView({
                 <Text style={styles.headerTitle}>Attendance Status</Text>
                 {/* Show location based on type */}
                 <Text style={styles.headerSubtitle}>
-                  {userLocationType === 'APPROX'
-                    ? '📍 IIT Guwahati'
-                    : userLocationType === 'FIELDTRIP'
-                    ? '📍 Field Trip'
+                  {userLocationType === "APPROX"
+                    ? "📍 IIT Guwahati"
+                    : userLocationType === "FIELDTRIP"
+                    ? "📍 Field Trip"
                     : showLocationSelector && selectedLocationLabel
                     ? `📍 ${selectedLocationLabel}`
-                    : '📍 Auto-detecting location...'}
+                    : "📍 Auto-detecting location..."}
                 </Text>
+                {/* Location type badge */}
                 {/* Location type badge */}
                 <View style={styles.locationTypeBadge}>
                   <Text style={styles.locationTypeText}>
-                    Mode: {userLocationType || 'ABSOLUTE'}
+                    Mode:{" "}
+                    {userLocationType === "FIELDTRIP"
+                      ? "Field Trip"
+                      : userLocationType === "APPROX"
+                      ? "Approx"
+                      : "Absolute"}
                   </Text>
                 </View>
               </View>
@@ -626,18 +632,23 @@ export function HomeView({
               </Text>
               {/* Show location based on type */}
               <Text style={styles.headerSubtitle}>
-                {userLocationType === 'APPROX'
-                  ? '📍 IIT Guwahati'
-                  : userLocationType === 'FIELDTRIP'
-                  ? '📍 Field Trip'
+                {userLocationType === "APPROX"
+                  ? "📍 IIT Guwahati"
+                  : userLocationType === "FIELDTRIP"
+                  ? "📍 Field Trip"
                   : showLocationSelector && selectedLocationLabel
                   ? `📍 ${selectedLocationLabel}`
-                  : '📍 Auto-detecting location...'}
+                  : "📍 Auto-detecting location..."}
               </Text>
               {/* Location type badge */}
               <View style={styles.locationTypeBadge}>
                 <Text style={styles.locationTypeText}>
-                  Mode: {userLocationType || 'ABSOLUTE'}
+                  Mode:{" "}
+                  {userLocationType === "FIELDTRIP"
+                    ? "Field Trip"
+                    : userLocationType === "APPROX"
+                    ? "Approx"
+                    : "Absolute"}
                 </Text>
               </View>
             </View>

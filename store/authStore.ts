@@ -13,14 +13,12 @@ interface AuthState {
   userId: string | null;
   isLoading: boolean;
   isInitialized: boolean;
-  hasAcceptedTerms: boolean; // NEW
 
   signIn: (username: string, password: string) => Promise<void>;
   signUp: (empId: string, name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   setLoading: (loading: boolean) => void;
-  acceptTerms: () => Promise<void>; // NEW
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,17 +29,12 @@ export const useAuthStore = create<AuthState>()(
       userId: null,
       isLoading: true,
       isInitialized: false,
-      hasAcceptedTerms: false, // NEW
 
       initializeAuth: async () => {
         try {
-          const [userData, accepted] = await Promise.all([
-            getUserData(),
-            AsyncStorage.getItem('hasAcceptedTerms'),
-          ]);
+          const userData = await getUserData();
 
           set({
-            hasAcceptedTerms: accepted === 'true',
             ...(userData?.isLoggedIn
               ? {
                   session: userData.userId,
@@ -58,11 +51,6 @@ export const useAuthStore = create<AuthState>()(
         } catch (e) {
           set({ isLoading: false, isInitialized: true });
         }
-      },
-
-      acceptTerms: async () => {
-        await AsyncStorage.setItem('hasAcceptedTerms', 'true');
-        set({ hasAcceptedTerms: true });
       },
 
       signIn: async (username, password) => {
@@ -126,12 +114,10 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           await clearUserData();
-          await AsyncStorage.removeItem('hasAcceptedTerms'); // NEW
           set({
             session: null,
             userName: null,
             userId: null,
-            hasAcceptedTerms: false,
           });
           useAttendanceStore.getState().clearUserId();
         } catch (e) {
@@ -148,7 +134,6 @@ export const useAuthStore = create<AuthState>()(
         session: state.session,
         userName: state.userName,
         userId: state.userId,
-        hasAcceptedTerms: state.hasAcceptedTerms,
       }),
     }
   )

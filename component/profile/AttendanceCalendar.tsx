@@ -10,7 +10,7 @@ import { useAttendanceStore } from "@/store/attendanceStore";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -40,7 +40,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [markedDates, setMarkedDates] = useState<any>({});
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Remove refreshKey state as it causes re-renders
+  const [isChangingMonth, setIsChangingMonth] = useState(false);
 
   const attendanceRecords = useAttendanceStore(
     (state) => state.attendanceRecords,
@@ -53,7 +54,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const fetchAttendanceData = useCallback(
     async (showLoading = true) => {
       try {
-        if (showLoading) setLoading(true);
+        // Only show loading on initial load or explicit refresh
+        if (showLoading && !isChangingMonth) setLoading(true);
 
         const response = await getAttendanceCalendar(
           empId,
@@ -65,7 +67,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
           setAttendanceDates(response.data.dates);
           setStatistics(response.data.statistics);
           setMarkedDates(getMarkedDates(response.data.dates));
-        } else {
+        } else if (!isChangingMonth) {
           Alert.alert(
             "Error",
             response.error || "Failed to load attendance data",
@@ -73,12 +75,15 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         }
       } catch (error) {
         console.error("Error fetching attendance:", error);
-        Alert.alert("Error", "Failed to load attendance data");
+        if (!isChangingMonth) {
+          Alert.alert("Error", "Failed to load attendance data");
+        }
       } finally {
-        if (showLoading) setLoading(false);
+        if (showLoading && !isChangingMonth) setLoading(false);
+        setIsChangingMonth(false);
       }
     },
-    [empId, selectedYear, selectedMonth],
+    [empId, selectedYear, selectedMonth, isChangingMonth],
   );
 
   useEffect(() => {
@@ -117,18 +122,18 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
-    setRefreshKey((prev) => prev + 1);
     fetchAttendanceData(true);
   }, [fetchAttendanceData]);
 
-  const onDayPress = (day: any) => {
+  const onDayPress = useCallback((day: any) => {
     setSelectedDate(day.dateString);
-  };
+  }, []);
 
-  const onMonthChange = (month: any) => {
+  const onMonthChange = useCallback((month: any) => {
+    setIsChangingMonth(true);
     setSelectedMonth(month.month);
     setSelectedYear(month.year);
-  };
+  }, []);
 
   // Helper to check if a date is a field trip date - regardless of current location type
   const isFieldTripDate = useCallback(
@@ -144,12 +149,11 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     [fieldTripDates], // Removed userLocationType dependency
   );
 
-  // Enhanced marked dates with field trip styling
-  const getEnhancedMarkedDates = useCallback(() => {
-    const marked = getMarkedDates(attendanceDates);
+  // Memoize the enhanced marked dates to prevent recalculation
+  const enhancedMarkedDates = useMemo(() => {
+    const marked = { ...markedDates };
 
-    // Apply field trip styling regardless of current userLocationType
-    // This ensures field trip dates remain visible even when switching location types
+    // Apply field trip styling
     if (fieldTripDates.length > 0) {
       Object.keys(marked).forEach((dateStr) => {
         if (isFieldTripDate(dateStr)) {
@@ -195,8 +199,43 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       });
     }
 
+    // Add selected date styling
+    if (selectedDate) {
+      marked[selectedDate] = {
+        ...marked[selectedDate],
+        selected: true,
+        selectedColor: colors.primary[500],
+      };
+    }
+
     return marked;
-  }, [attendanceDates, fieldTripDates, isFieldTripDate]); // Removed userLocationType dependency
+  }, [markedDates, fieldTripDates, isFieldTripDate, selectedDate]);
+
+  // Memoize calendar theme to prevent re-creation
+  const calendarTheme = useMemo(
+    () => ({
+      backgroundColor: colors.white,
+      calendarBackground: colors.white,
+      textSectionTitleColor: colors.gray[600],
+      selectedDayBackgroundColor: colors.primary[500],
+      selectedDayTextColor: colors.white,
+      todayTextColor: colors.primary[500],
+      dayTextColor: colors.gray[800],
+      textDisabledColor: colors.gray[300],
+      dotColor: colors.success,
+      selectedDotColor: colors.white,
+      arrowColor: colors.primary[500],
+      monthTextColor: colors.gray[800],
+      indicatorColor: colors.primary[500],
+      textDayFontWeight: "400" as const,
+      textMonthFontWeight: "bold" as const,
+      textDayHeaderFontWeight: "600" as const,
+      textDayFontSize: 16,
+      textMonthFontSize: 18,
+      textDayHeaderFontSize: 14,
+    }),
+    [],
+  );
 
   const renderStatisticsCard = () => {
     if (!statistics) return null;
@@ -205,7 +244,6 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       <Animated.View
         entering={FadeInDown.delay(100).springify()}
         style={styles.statisticsCard}
-        key={`stats-${refreshKey}`}
       >
         <LinearGradient
           colors={[colors.primary[500], colors.primary[600]]}
@@ -489,7 +527,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
-          refreshing={loading}
+          refreshing={false}
           onRefresh={handleRefresh}
           colors={[colors.primary[500]]}
           tintColor={colors.primary[500]}
@@ -502,41 +540,22 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         <Text style={styles.calendarTitle}>Attendance Calendar</Text>
 
         <Calendar
-          key={`${refreshKey}-${userLocationType}-${fieldTripDates.length}`}
+          // Remove the key prop to prevent full re-render
           current={`${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`}
           onDayPress={onDayPress}
           onMonthChange={onMonthChange}
           markingType="custom"
-          markedDates={{
-            ...getEnhancedMarkedDates(),
-            [selectedDate]: {
-              ...getEnhancedMarkedDates()[selectedDate],
-              selected: true,
-              selectedColor: colors.primary[500],
-            },
-          }}
-          theme={{
-            backgroundColor: colors.white,
-            calendarBackground: colors.white,
-            textSectionTitleColor: colors.gray[600],
-            selectedDayBackgroundColor: colors.primary[500],
-            selectedDayTextColor: colors.white,
-            todayTextColor: colors.primary[500],
-            dayTextColor: colors.gray[800],
-            textDisabledColor: colors.gray[300],
-            dotColor: colors.success,
-            selectedDotColor: colors.white,
-            arrowColor: colors.primary[500],
-            monthTextColor: colors.gray[800],
-            indicatorColor: colors.primary[500],
-            textDayFontWeight: "400",
-            textMonthFontWeight: "bold",
-            textDayHeaderFontWeight: "600",
-            textDayFontSize: 16,
-            textMonthFontSize: 18,
-            textDayHeaderFontSize: 14,
-          }}
+          markedDates={enhancedMarkedDates}
+          theme={calendarTheme}
           style={styles.calendar}
+          // Add these props for smoother navigation
+          enableSwipeMonths={true}
+          hideExtraDays={false}
+          disableMonthChange={false}
+          // Prevent re-rendering of day components
+          dayComponent={undefined}
+          // Add animation for month changes
+          // animateScroll={true}
         />
       </View>
 
