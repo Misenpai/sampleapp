@@ -1,15 +1,23 @@
+// services/authService.ts
 import axios from "axios";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export interface AuthResponse {
   success: boolean;
+  empCode?: string;  // Changed from userId
+  username?: string;
   user?: {
-    id: string;
+    userKey: string;  // New primary key
+    empCode: string;  // Changed from id
     username: string;
     email: string;
-    createdAt?: string;
-    updatedAt?: string;
+    location?: string;
+    role?: 'USER' | 'SYSTEM';
+    isActive?: boolean;
+    userLocation?: {
+      locationType: 'ABSOLUTE' | 'APPROX' | 'FIELDTRIP';
+    };
   };
   error?: string;
   message?: string;
@@ -23,15 +31,15 @@ const apiClient = axios.create({
   }
 });
 
-
-export const signupUser = async (empId: string, username: string, email: string, password: string): Promise<AuthResponse> => {
+export const signupUser = async (
+  empCode: string,  // Changed from empId
+  username: string, 
+  email: string, 
+  password: string
+): Promise<AuthResponse> => {
   try {
-        const signupUrl = `${API_BASE}/signup`;
-    console.log('Attempting signup to URL:', signupUrl);
-    console.log('Attempting signup with:', { empId, username, email, apiBase: API_BASE });
-    
     const { data } = await apiClient.post('/signup', {
-      empId: empId.trim(),
+      empCode: empCode.trim(),  // Changed from empId
       username: username.trim(),
       email: email.toLowerCase().trim(),
       password
@@ -41,26 +49,21 @@ export const signupUser = async (empId: string, username: string, email: string,
 
     return {
       success: data.success,
+      empCode: data.empCode,
+      username: data.username,
       user: data.user,
       message: data.message
     };
   } catch (error: any) {
     console.error('Signup error:', error);
     
-    if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
+    if (error.response?.status === 409) {
       return {
         success: false,
-        error: "Cannot connect to server. Please check your internet connection and try again."
+        error: "User already exists with this email, employee code, or username"
       };
     }
     
-    if (error.code === 'ECONNABORTED') {
-      return {
-        success: false,
-        error: "Request timeout. Please try again."
-      };
-    }
-
     return {
       success: false,
       error: error.response?.data?.error || error.message || "Signup failed"
@@ -68,10 +71,11 @@ export const signupUser = async (empId: string, username: string, email: string,
   }
 };
 
-export const loginUser = async (username: string, password: string): Promise<AuthResponse> => {
+export const loginUser = async (
+  username: string, 
+  password: string
+): Promise<AuthResponse> => {
   try {
-    console.log('Attempting login with:', { username, apiBase: API_BASE });
-    
     const { data } = await apiClient.post('/login', {
       username: username.trim(),
       password
@@ -81,26 +85,22 @@ export const loginUser = async (username: string, password: string): Promise<Aut
 
     return {
       success: data.success,
+      empCode: data.empCode,
+      username: data.username,
       user: data.user,
       message: data.message
     };
   } catch (error: any) {
     console.error('Login error:', error);
     
-    if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
+    if (error.response?.status === 401) {
+      const errorMessage = error.response.data?.error || "Invalid username or password";
       return {
         success: false,
-        error: "Cannot connect to server. Please check your internet connection and try again."
+        error: errorMessage
       };
     }
     
-    if (error.code === 'ECONNABORTED') {
-      return {
-        success: false,
-        error: "Request timeout. Please try again."
-      };
-    }
-
     return {
       success: false,
       error: error.response?.data?.error || error.message || "Login failed"

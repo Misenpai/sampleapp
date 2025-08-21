@@ -3,7 +3,7 @@ import axios from "axios";
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export interface ProfileData {
-  empId: string;
+  empCode: string;
   username: string;
   email: string;
   location: string;
@@ -36,7 +36,10 @@ export const getUserProfileByUsername = async (username: string): Promise<Profil
     
     return {
       success: data.success,
-      data: data.data
+      data: {
+        ...data.data,
+        empId: data.data.empCode,  // Map empCode to empId for backward compatibility
+      }
     };
   } catch (error: any) {
     console.error('Get profile error:', error);
@@ -58,7 +61,10 @@ export const updateUserLocation = async (empId: string, location: string): Promi
     
     return {
       success: data.success,
-      data: data.data,
+      data: {
+        ...data.data,
+        empId: data.data.empCode,  // Map for backward compatibility
+      },
       message: data.message
     };
   } catch (error: any) {

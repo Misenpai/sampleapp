@@ -22,7 +22,7 @@ const { width } = Dimensions.get("window");
 
 export default function SignupScreen() {
   const { signUp, isLoading } = useAuthStore();
-  const [empId, setEmpId] = useState("");
+  const [empCode, setEmpCode] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +31,7 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
-    if (!empId.trim()) {
+    if (!empCode.trim()) {
       Alert.alert("Error", "Please enter your employee ID");
       return;
     }
@@ -57,10 +57,10 @@ export default function SignupScreen() {
     }
 
     await signUp(
-      empId.trim(),
+      empCode.trim(),
       username.trim(),
       email.trim().toLowerCase(),
-      password.trim(),
+      password.trim()
     );
   };
 
@@ -109,6 +109,7 @@ export default function SignupScreen() {
             style={styles.formCard}
           >
             {/* Form Inputs */}
+
             <View style={styles.inputContainer}>
               <FontAwesome6
                 name="id-badge"
@@ -118,10 +119,10 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Employee ID"
+                placeholder="Employee Code" // Changed from "Employee ID"
                 placeholderTextColor={colors.gray[400]}
-                value={empId}
-                onChangeText={setEmpId}
+                value={empCode} // Keep variable name as empCode
+                onChangeText={setEmpCode}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -228,14 +229,14 @@ export default function SignupScreen() {
                       {
                         width: `${Math.min(
                           (password.length / 12) * 100,
-                          100,
+                          100
                         )}%`,
                         backgroundColor:
                           password.length < 6
                             ? colors.error
                             : password.length < 10
-                              ? colors.warning
-                              : colors.success,
+                            ? colors.warning
+                            : colors.success,
                       },
                     ]}
                   />
@@ -244,8 +245,8 @@ export default function SignupScreen() {
                   {password.length < 6
                     ? "Weak"
                     : password.length < 10
-                      ? "Medium"
-                      : "Strong"}
+                    ? "Medium"
+                    : "Strong"}
                 </Text>
               </View>
             )}

@@ -14,10 +14,11 @@ interface AttendanceRecord {
   hasAudio: boolean;
   checkInTime?: string;
   checkOutTime?: string;
-  sessionType?: string;
-  attendanceType?: string;
+  sessionType?: "FORENOON" | "AFTERNOON";
+  attendanceType?: "FULL_DAY" | "HALF_DAY";
   isCheckedOut?: boolean;
   takenLocation?: string;
+  attendanceKey?: string;
 }
 
 export type PhotoPosition = "front" | "left" | "right";
@@ -44,6 +45,10 @@ interface AttendanceState {
   isFieldTrip: boolean;
   fieldTripDates: { startDate: string; endDate: string }[];
 
+  // NEW: Session & checkout
+  currentSessionType: "FORENOON" | "AFTERNOON" | null;
+  canCheckout: boolean;
+
   // Actions
   initializeUserId: () => Promise<void>;
   setUserId: (userId: string | null) => void;
@@ -68,6 +73,10 @@ interface AttendanceState {
   ) => void;
   checkFieldTripStatus: () => Promise<void>;
   fetchUserLocationSettings: () => Promise<void>;
+
+  // NEW: Checkout & session helpers
+  checkoutAttendance: () => Promise<boolean>;
+  getCurrentSessionType: () => "FORENOON" | "AFTERNOON" | "OUTSIDE";
 }
 
 const getTodayDateString = () => new Date().toISOString().split("T")[0];
@@ -101,6 +110,10 @@ export const useAttendanceStore = create<AttendanceState>()(
       userLocationType: null,
       isFieldTrip: false,
       fieldTripDates: [],
+
+      // NEW: Session & checkout
+      currentSessionType: null,
+      canCheckout: false,
 
       // Actions
       initializeUserId: async () => {
@@ -145,6 +158,8 @@ export const useAttendanceStore = create<AttendanceState>()(
           todayAttendanceMarked: false,
           attendanceRecords: [],
           lastAttendanceUpdate: Date.now(),
+          currentSessionType: null,
+          canCheckout: false,
         });
 
         if (userId) {
@@ -171,6 +186,8 @@ export const useAttendanceStore = create<AttendanceState>()(
           userLocationType: null,
           isFieldTrip: false,
           fieldTripDates: [],
+          currentSessionType: null,
+          canCheckout: false,
         });
       },
 
@@ -202,12 +219,14 @@ export const useAttendanceStore = create<AttendanceState>()(
       markAttendanceForToday: (location) => {
         const today = getTodayDateString();
         const state = get();
+        const sessionType = state.getCurrentSessionType();
         const newRecord: AttendanceRecord = {
           date: today,
           timestamp: Date.now(),
           location,
           photosCount: state.photos.length,
           hasAudio: !!state.audioRecording,
+          sessionType: sessionType === "OUTSIDE" ? undefined : sessionType,
         };
         set({
           attendanceRecords: [
@@ -216,6 +235,8 @@ export const useAttendanceStore = create<AttendanceState>()(
           ],
           todayAttendanceMarked: true,
           lastAttendanceUpdate: Date.now(),
+          currentSessionType: sessionType === "OUTSIDE" ? null : sessionType,
+          canCheckout: sessionType !== "OUTSIDE",
         });
         setTimeout(() => get().fetchTodayAttendanceFromServer(), 2000);
       },
@@ -244,7 +265,10 @@ export const useAttendanceStore = create<AttendanceState>()(
               attendanceType: data.data.attendanceType,
               isCheckedOut: data.data.isCheckedOut,
               takenLocation: data.data.takenLocation,
+              attendanceKey: data.data.attendanceKey,
             };
+            const canCheckout =
+              !data.data.isCheckedOut && data.data.sessionType !== undefined;
             set({
               attendanceRecords: [
                 ...state.attendanceRecords.filter((r) => r.date !== today),
@@ -252,6 +276,8 @@ export const useAttendanceStore = create<AttendanceState>()(
               ],
               todayAttendanceMarked: true,
               lastAttendanceUpdate: Date.now(),
+              currentSessionType: serverRecord.sessionType || null,
+              canCheckout,
             });
             return true;
           } else {
@@ -261,6 +287,8 @@ export const useAttendanceStore = create<AttendanceState>()(
               ),
               todayAttendanceMarked: false,
               lastAttendanceUpdate: Date.now(),
+              currentSessionType: null,
+              canCheckout: false,
             });
             return false;
           }
@@ -468,6 +496,46 @@ export const useAttendanceStore = create<AttendanceState>()(
           console.error("Error checking field trip status:", err);
         }
       },
+
+      // NEW: Checkout & session helpers
+      getCurrentSessionType: () => {
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const timeInMinutes = hours * 60 + minutes;
+
+        // Forenoon: 9:30 AM to 1:00 PM
+        if (timeInMinutes >= 570 && timeInMinutes < 780) {
+          return "FORENOON";
+        }
+        // Afternoon: 1:00 PM to 5:30 PM
+        else if (timeInMinutes >= 780 && timeInMinutes <= 1050) {
+          return "AFTERNOON";
+        }
+        return "OUTSIDE";
+      },
+
+      checkoutAttendance: async () => {
+        const state = get();
+        if (!state.userId) return false;
+
+        try {
+          const { checkoutAttendance } = await import(
+            "../services/attendanceService"
+          );
+          const result = await checkoutAttendance(state.userId);
+
+          if (result.success) {
+            // Update local state
+            await state.fetchTodayAttendanceFromServer();
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error("Checkout error:", error);
+          return false;
+        }
+      },
     }),
     {
       name: "attendance-storage",
@@ -477,6 +545,8 @@ export const useAttendanceStore = create<AttendanceState>()(
         lastAttendanceUpdate: state.lastAttendanceUpdate,
         userLocationType: state.userLocationType, // Persist location type
         fieldTripDates: state.fieldTripDates, // Always persist field trip dates
+        currentSessionType: state.currentSessionType,
+        canCheckout: state.canCheckout,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

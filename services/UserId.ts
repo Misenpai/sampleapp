@@ -4,20 +4,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const STORAGE_KEY = "app_user_data";
 
 export interface UserData {
-  userId: string;
-  name: string;
+  userId: string;  // This is empCode
+  userKey?: string;  // The actual primary key from database
+  name: string;  // username
   email: string;
   isLoggedIn: boolean;
   hasAcceptedTerms?: boolean;
 }
 
-// This function should only be called when we know user is logged in
 const getOrCreateUserId = async () => {
   const userData = await getUserData();
   
   if (userData && userData.isLoggedIn) {
-    // Return the username, not name (this was the bug)
-    return userData.name; // This is actually the username in your system
+    // Return the username for attendance marking
+    return userData.name;
   }
   
   return null;
