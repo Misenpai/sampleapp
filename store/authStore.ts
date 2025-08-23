@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { loginUser, signupUser } from '../services/authService';
+import { loginUser } from '../services/authService';
 import { clearUserData, getUserData, storeUserData } from '../services/UserId';
 import { useAttendanceStore } from './attendanceStore';
 
@@ -16,7 +16,6 @@ interface AuthState {
   isInitialized: boolean;
 
   signIn: (username: string, password: string) => Promise<void>;
-  signUp: (empCode: string, username: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   setLoading: (loading: boolean) => void;
@@ -96,42 +95,6 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           set({ isLoading: false });
           Alert.alert('Error', 'Unexpected error during login');
-        }
-      },
-
-      signUp: async (empCode, username, email, password) => {
-        set({ isLoading: true });
-        try {
-          const res = await signupUser(empCode, username, email, password);
-          
-          if (res.success && res.user) {
-            await storeUserData({
-              userId: res.user.empCode,  // Store empCode as userId
-              userKey: res.user.userKey,
-              name: res.user.username,
-              email: res.user.email,
-              isLoggedIn: true,
-            });
-            
-            set({
-              session: res.user.empCode,
-              userName: res.user.username,
-              userId: res.user.empCode,
-              userKey: res.user.userKey,
-              isLoading: false,
-            });
-            
-            // Set username for attendance store
-            useAttendanceStore.getState().setUserId(res.user.username);
-            
-            Alert.alert('Success', 'Account created successfully!');
-          } else {
-            set({ isLoading: false });
-            Alert.alert('Signup Failed', res.error || 'Unknown error');
-          }
-        } catch {
-          set({ isLoading: false });
-          Alert.alert('Error', 'Unexpected error during signup');
         }
       },
 

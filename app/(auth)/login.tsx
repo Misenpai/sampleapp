@@ -2,7 +2,6 @@ import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/store/authStore";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { LinearGradient } from "expo-linear-gradient";
-import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -144,18 +143,6 @@ export default function LoginScreen() {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-
-            {/* Sign Up Link */}
-            <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>
-                Don&apos;t have an account?{" "}
-              </Text>
-              <Link href="/(auth)/signup" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.signupLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>

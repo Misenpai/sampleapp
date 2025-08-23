@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "expo-router";
 
 export default function TermsScreen() {
-  const { acceptTerms } = useAuthStore();
   const router = useRouter();
 
   const { requestPermission: requestCamera } = useCamera();
@@ -15,12 +14,7 @@ export default function TermsScreen() {
   const { requestPermission: requestLocation } = useLocation();
 
   const handleAccept = async () => {
-    await Promise.all([
-      requestCamera(),
-      requestMic(),
-      requestLocation(),
-    ]);
-    await acceptTerms();
+    await Promise.all([requestCamera(), requestMic(), requestLocation()]);
     router.replace("/(tabs)");
   };
 

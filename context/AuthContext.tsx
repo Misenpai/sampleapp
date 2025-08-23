@@ -1,5 +1,3 @@
-import { loginUser, signupUser } from "../services/authService";
-import { clearUserData, getUserData, storeUserData } from "../services/UserId";
 import { router, useRootNavigationState, useSegments } from "expo-router";
 import React, {
   createContext,
@@ -9,10 +7,11 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
+import { loginUser } from "../services/authService";
+import { clearUserData, getUserData, storeUserData } from "../services/UserId";
 
 type AuthType = {
   signIn: (username: string, password: string) => Promise<void>;
-  signUp: (empId: string, name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   session?: string | null;
   isLoading: boolean;
@@ -22,7 +21,6 @@ type AuthType = {
 
 const AuthContext = createContext<AuthType>({
   signIn: async () => {},
-  signUp: async () => {},
   signOut: async () => {},
   session: null,
   isLoading: true,
@@ -90,16 +88,16 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             
             if (result.success && result.user) {
               const userData = {
-                userId: result.user.id,
+                userId: result.user.userKey,
                 name: result.user.username,
                 email: result.user.email,
                 isLoggedIn: true
               };
               
               await storeUserData(userData);
-              setSession(result.user.id);
+              setSession(result.user.userKey);
               setUserName(result.user.username);
-              setUserId(result.user.id);
+              setUserId(result.user.userKey);
               
               Alert.alert("Success", "Logged in successfully!");
             } else {
@@ -112,37 +110,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setIsLoading(false);
           }
         },
-        signUp: async (empId: string, name: string, email: string, password: string) => {
-          setIsLoading(true);
-          try {
-            console.log('Starting sign up process...');
-            const result = await signupUser(empId, name, email, password);
-            console.log('Signup result:', result);
-            
-            if (result.success && result.user) {
-              const userData = {
-                userId: result.user.id,
-                name: result.user.username,
-                email: result.user.email,
-                isLoggedIn: true
-              };
-              
-              await storeUserData(userData);
-              setSession(result.user.id);
-              setUserName(result.user.username);
-              setUserId(result.user.id);
-              
-              Alert.alert("Success", "Account created successfully!");
-            } else {
-              Alert.alert("Signup Failed", result.error || "Unknown error occurred");
-            }
-          } catch (error) {
-            console.error("Sign up error:", error);
-            Alert.alert("Error", "An unexpected error occurred during signup");
-          } finally {
-            setIsLoading(false);
-          }
-        },
+      
         signOut: async () => {
           try {
             await clearUserData();

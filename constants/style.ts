@@ -194,7 +194,7 @@ export const cameraStyles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   controlSpacer: {
-    display: 'none',
+    display: "none",
   },
   shutterBtn: {
     alignItems: "center",
@@ -230,18 +230,18 @@ export const audioRecorderStyles = StyleSheet.create({
     backgroundColor: colors.black,
   },
   datePrompt: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 8,
   },
   dateText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
+    fontWeight: "600",
+    color: "#007AFF",
   },
   waveformContainer: {
     height: 100,
@@ -252,9 +252,9 @@ export const audioRecorderStyles = StyleSheet.create({
     flex: 1,
   },
   playbackControls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 20,
     marginTop: 20,
   },
@@ -262,8 +262,8 @@ export const audioRecorderStyles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
@@ -382,7 +382,7 @@ export const permissionStyles = StyleSheet.create({
 
 export const mapCardStyles = StyleSheet.create({
   container: {
-    margin: 20,
+    marginHorizontal: 20,
     marginBottom: 10,
     borderRadius: 12,
     overflow: "hidden",
@@ -508,38 +508,38 @@ export const attendanceContainerStyles = StyleSheet.create({
   // Field trip styles
   fieldTripContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   fieldTripGradient: {
-    width: '100%',
+    width: "100%",
     padding: 30,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 300,
   },
   fieldTripTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.white,
     marginTop: 20,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   fieldTripText: {
     fontSize: 16,
     color: colors.white,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 30,
     opacity: 0.9,
     lineHeight: 24,
   },
   fieldTripInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
@@ -547,7 +547,7 @@ export const attendanceContainerStyles = StyleSheet.create({
   },
   fieldTripDate: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.white,
   },
 });

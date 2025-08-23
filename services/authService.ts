@@ -31,45 +31,6 @@ const apiClient = axios.create({
   }
 });
 
-export const signupUser = async (
-  empCode: string,  // Changed from empId
-  username: string, 
-  email: string, 
-  password: string
-): Promise<AuthResponse> => {
-  try {
-    const { data } = await apiClient.post('/signup', {
-      empCode: empCode.trim(),  // Changed from empId
-      username: username.trim(),
-      email: email.toLowerCase().trim(),
-      password
-    });
-
-    console.log('Signup response:', data);
-
-    return {
-      success: data.success,
-      empCode: data.empCode,
-      username: data.username,
-      user: data.user,
-      message: data.message
-    };
-  } catch (error: any) {
-    console.error('Signup error:', error);
-    
-    if (error.response?.status === 409) {
-      return {
-        success: false,
-        error: "User already exists with this email, employee code, or username"
-      };
-    }
-    
-    return {
-      success: false,
-      error: error.response?.data?.error || error.message || "Signup failed"
-    };
-  }
-};
 
 export const loginUser = async (
   username: string, 
