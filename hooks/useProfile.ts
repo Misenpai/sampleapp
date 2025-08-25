@@ -1,4 +1,4 @@
-// hooks/useProfile.ts
+// hooks/useProfile.ts - Fixed version
 import { authService } from "@/services/authService";
 import { AvatarData, getUserAvatar, saveUserAvatar } from "@/services/avatarStorageService";
 import { useEffect, useState } from "react";
@@ -10,18 +10,76 @@ import {
 } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
 
-
 export const useProfile = () => {
-  const { userName, userId } = useAuthStore();
+  const { userName, userId, isAuthenticated } = useAuthStore();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    if (userName) {
+    console.log('useProfile effect triggered:', { userName, isAuthenticated });
+    
+    if (userName && isAuthenticated) {
       fetchProfile();
+    } else if (!isAuthenticated) {
+      // Clear profile if not authenticated
+      setProfile(null);
+      setLoading(false);
+    } else {
+      // No username but authenticated - shouldn't happen but handle gracefully
+      setLoading(false);
     }
-  }, [userName]);
+  }, [userName, isAuthenticated]);
+
+  const fetchProfile = async () => {
+    if (!userName) {
+      console.log('No username available for profile fetch');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('Fetching profile for username:', userName);
+      
+      // Check if user is still authenticated before making request
+      const isAuth = await authService.isAuthenticated();
+      
+      if (!isAuth) {
+        console.log('User not authenticated, cannot fetch profile');
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const response = await getUserProfileByUsername(userName);
+      console.log('Profile fetch response:', response);
+
+      if (response.success && response.data) {
+        // Load avatar from local storage
+        const avatar = await getUserAvatar(response.data.empCode);
+        setProfile({
+          ...response.data,
+          avatar,
+        });
+      } else {
+        console.error('Profile fetch failed:', response.error);
+        
+        // Handle authentication errors specially
+        if (response.error?.includes('Authentication') || response.error?.includes('login')) {
+          console.log('Authentication error during profile fetch');
+          setProfile(null);
+        } else {
+          Alert.alert("Error", response.error || "Failed to fetch profile");
+        }
+      }
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      Alert.alert("Error", "Failed to fetch profile data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateLocation = async (newLocation: string) => {
     if (!profile?.empCode) return false;
@@ -47,61 +105,6 @@ export const useProfile = () => {
     }
   };
 
-const fetchProfile = async () => {
-  if (!userName) {
-    console.log('No username available for profile fetch');
-    setLoading(false);
-    return;
-  }
-
-  try {
-    setLoading(true);
-    
-    // Check if user is still authenticated before making request
-    const isAuth = await authService.isAuthenticated();
-    
-    if (!isAuth) {
-      console.log('User not authenticated, cannot fetch profile');
-      // Don't show alert, let auth store handle navigation to login
-      setLoading(false);
-      return;
-    }
-
-    const response = await getUserProfileByUsername(userName);
-
-    if (response.success && response.data) {
-      // Load avatar from local storage
-      const avatar = await getUserAvatar(response.data.empCode);
-      setProfile({
-        ...response.data,
-        avatar,
-      });
-    } else {
-      console.error('Profile fetch failed:', response.error);
-      Alert.alert("Error", response.error || "Failed to fetch profile");
-    }
-  } catch (error) {
-    console.error("Profile fetch error:", error);
-    
-    // Check if it's an authentication error
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "response" in error &&
-      typeof (error as any).response?.status === "number" &&
-      (error as any).response.status === 401
-    ) {
-      console.log('Authentication error during profile fetch');
-      // Let auth store handle this
-    } else {
-      Alert.alert("Error", "Failed to fetch profile data");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Update the updateAvatar function
   const updateAvatar = async (avatarData: AvatarData) => {
     if (!profile?.empCode) return false;
 
@@ -126,14 +129,21 @@ const fetchProfile = async () => {
     }
   };
 
+  // Add retry function for failed requests
+  const retryFetchProfile = async () => {
+    if (!userName) return;
+    await fetchProfile();
+  };
+
   return {
     profile,
     loading,
     updating,
-    fetchProfile,
+    fetchProfile: retryFetchProfile,
     updateLocation,
     updateAvatar,
     userName,
     userId,
+    isAuthenticated,
   };
 };

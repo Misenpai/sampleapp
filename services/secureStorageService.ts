@@ -1,4 +1,4 @@
-// services/secureStorageService.ts
+// services/secureStorageService.ts - Debug version
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -44,111 +44,135 @@ class SecureStorageService {
 
   // Store tokens securely
   async storeTokens(tokens: Omit<SecureTokens, 'tokenTimestamp'>): Promise<void> {
-  try {
-    console.log('Storing tokens...');
-    const tokenData: SecureTokens = {
-      ...tokens,
-      tokenTimestamp: Date.now(),
-    };
+    try {
+      console.log('🔐 Storing tokens...');
+      const tokenData: SecureTokens = {
+        ...tokens,
+        tokenTimestamp: Date.now(),
+      };
 
-    const isSecure = await this.isSecureStoreAvailable();
-    console.log('SecureStore available:', isSecure);
+      const isSecure = await this.isSecureStoreAvailable();
+      console.log('🔍 SecureStore available:', isSecure);
 
-    if (isSecure) {
-      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokenData.accessToken);
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokenData.refreshToken);
-      console.log('Tokens stored in SecureStore');
-    } else {
-      console.warn('Using AsyncStorage fallback for tokens (less secure)');
-      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokenData.accessToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
-      console.log('Tokens stored in AsyncStorage');
+      if (isSecure) {
+        await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokenData.accessToken);
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+        console.log('✅ Tokens stored in SecureStore');
+      } else {
+        console.warn('⚠️ Using AsyncStorage fallback for tokens (less secure)');
+        await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokenData.accessToken);
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+        console.log('✅ Tokens stored in AsyncStorage');
+      }
+
+      await AsyncStorage.setItem(
+        TOKEN_METADATA_KEY,
+        JSON.stringify({
+          expiresIn: tokenData.expiresIn,
+          tokenTimestamp: tokenData.tokenTimestamp,
+        })
+      );
+
+      console.log('✅ Token metadata stored');
+      
+      // Verify storage immediately
+      const storedTokens = await this.getTokens();
+      console.log('🔍 Verification - tokens retrieved successfully:', !!storedTokens);
+
+    } catch (error) {
+      console.error('💥 Failed to store tokens:', error);
+      throw new Error('Failed to store authentication tokens');
     }
-
-    await AsyncStorage.setItem(
-      TOKEN_METADATA_KEY,
-      JSON.stringify({
-        expiresIn: tokenData.expiresIn,
-        tokenTimestamp: tokenData.tokenTimestamp,
-      })
-    );
-
-    console.log('Token metadata stored');
-    
-    // Verify storage immediately
-    const storedTokens = await this.getTokens();
-    console.log('Verification - tokens retrieved successfully:', !!storedTokens);
-
-  } catch (error) {
-    console.error('Failed to store tokens:', error);
-    throw new Error('Failed to store authentication tokens');
   }
-}
 
   // Retrieve tokens from secure storage
-async getTokens(): Promise<SecureTokens | null> {
-  try {
-    const isSecure = await this.isSecureStoreAvailable();
-    let accessToken: string | null = null;
-    let refreshToken: string | null = null;
+  async getTokens(): Promise<SecureTokens | null> {
+    try {
+      const isSecure = await this.isSecureStoreAvailable();
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
 
-    if (isSecure) {
-      // Try to get from SecureStore
-      accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-      refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-    } else {
-      // Fallback to AsyncStorage
-      accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
-      refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-    }
+      if (isSecure) {
+        // Try to get from SecureStore
+        accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+        refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      } else {
+        // Fallback to AsyncStorage
+        accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+        refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      }
 
-    // Retrieve token metadata
-    const tokenMetadata = await AsyncStorage.getItem(TOKEN_METADATA_KEY);
-    
-    console.log('Token retrieval debug:', {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      hasMetadata: !!tokenMetadata,
-    });
-
-    if (accessToken && refreshToken && tokenMetadata) {
-      const metadata = JSON.parse(tokenMetadata);
-      const tokenData: SecureTokens = {
-        accessToken,
-        refreshToken,
-        expiresIn: metadata.expiresIn,
-        tokenTimestamp: metadata.tokenTimestamp,
-      };
+      // Retrieve token metadata
+      const tokenMetadata = await AsyncStorage.getItem(TOKEN_METADATA_KEY);
       
-      // Check if token is expired
-      const now = Date.now();
-      const tokenAge = now - tokenData.tokenTimestamp;
-      const isExpired = tokenAge >= tokenData.expiresIn * 1000;
-      
-      console.log('Token status:', {
-        tokenAge: Math.floor(tokenAge / 1000),
-        expiresIn: tokenData.expiresIn,
-        isExpired,
+      console.log('🔍 Token retrieval debug:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hasMetadata: !!tokenMetadata,
+        accessTokenLength: accessToken?.length,
+        refreshTokenLength: refreshToken?.length
       });
+
+      if (accessToken && refreshToken && tokenMetadata) {
+        const metadata = JSON.parse(tokenMetadata);
+        const tokenData: SecureTokens = {
+          accessToken,
+          refreshToken,
+          expiresIn: metadata.expiresIn,
+          tokenTimestamp: metadata.tokenTimestamp,
+        };
+        
+        // Check if token is expired
+        const now = Date.now();
+        const tokenAge = now - tokenData.tokenTimestamp;
+        const isExpired = tokenAge >= tokenData.expiresIn * 1000;
+        
+        console.log('🔍 Token status:', {
+          tokenAge: Math.floor(tokenAge / 1000),
+          expiresIn: tokenData.expiresIn,
+          isExpired,
+        });
+        
+        return tokenData;
+      }
       
-      return tokenData;
+      console.log('❌ No complete token set found');
+      return null;
+    } catch (error) {
+      console.error('💥 Failed to retrieve tokens:', error);
+      return null;
     }
-    
-    console.log('No complete token set found');
-    return null;
-  } catch (error) {
-    console.error('Failed to retrieve tokens:', error);
-    return null;
   }
-}
 
   // Store user data (non-sensitive)
   async storeUserData(userData: SecureUserData): Promise<void> {
     try {
+      console.log('👤 Storing user data:', {
+        userKey: userData.userKey,
+        empCode: userData.empCode,
+        username: userData.username,
+        email: userData.email,
+        role: userData.role,
+        location: userData.location,
+        hasUserLocation: !!userData.userLocation
+      });
+      
       await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-      console.log('User data stored');
+      console.log('✅ User data stored successfully');
+      
+      // Verify storage immediately
+      const stored = await AsyncStorage.getItem(USER_DATA_KEY);
+      console.log('🔍 Verification - user data retrieved:', !!stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('🔍 Stored user data verification:', {
+          username: parsed.username,
+          empCode: parsed.empCode,
+          userKey: parsed.userKey
+        });
+      }
     } catch (error) {
-      console.error('Failed to store user data:', error);
+      console.error('💥 Failed to store user data:', error);
       throw new Error('Failed to store user data');
     }
   }
@@ -156,10 +180,24 @@ async getTokens(): Promise<SecureTokens | null> {
   // Get user data
   async getUserData(): Promise<SecureUserData | null> {
     try {
+      console.log('👤 Getting user data...');
       const userData = await AsyncStorage.getItem(USER_DATA_KEY);
-      return userData ? JSON.parse(userData) : null;
+      
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        console.log('✅ User data retrieved:', {
+          username: parsed.username,
+          empCode: parsed.empCode,
+          userKey: parsed.userKey,
+          hasAllFields: !!(parsed.username && parsed.empCode && parsed.userKey)
+        });
+        return parsed;
+      } else {
+        console.log('❌ No user data found in storage');
+        return null;
+      }
     } catch (error) {
-      console.error('Failed to retrieve user data:', error);
+      console.error('💥 Failed to retrieve user data:', error);
       return null;
     }
   }
@@ -168,15 +206,24 @@ async getTokens(): Promise<SecureTokens | null> {
   async isTokenValid(): Promise<boolean> {
     try {
       const tokens = await this.getTokens();
-      if (!tokens) return false;
+      if (!tokens) {
+        console.log('🔍 No tokens available for validity check');
+        return false;
+      }
       
       const now = Date.now();
       const tokenAge = now - tokens.tokenTimestamp;
       const isExpired = tokenAge >= tokens.expiresIn * 1000;
       
+      console.log('🔍 Token validity check:', {
+        tokenAge: Math.floor(tokenAge / 1000),
+        expiresIn: tokens.expiresIn,
+        isExpired
+      });
+      
       return !isExpired;
     } catch (error) {
-      console.error('Error checking token validity:', error);
+      console.error('💥 Error checking token validity:', error);
       return false;
     }
   }
@@ -193,7 +240,7 @@ async getTokens(): Promise<SecureTokens | null> {
       
       return Math.floor(timeRemaining / 1000); // Return seconds
     } catch (error) {
-      console.error('Error calculating token time remaining:', error);
+      console.error('💥 Error calculating token time remaining:', error);
       return 0;
     }
   }
@@ -201,16 +248,19 @@ async getTokens(): Promise<SecureTokens | null> {
   // Clear all stored data (logout)
   async clearAll(): Promise<void> {
     try {
+      console.log('🧹 Clearing all secure data...');
       const isSecure = await this.isSecureStoreAvailable();
       
       if (isSecure) {
         // Clear from SecureStore
         await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
         await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+        console.log('✅ Cleared tokens from SecureStore');
       } else {
         // Clear from AsyncStorage fallback
         await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
         await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+        console.log('✅ Cleared tokens from AsyncStorage');
       }
       
       // Clear non-sensitive data from AsyncStorage
@@ -218,15 +268,16 @@ async getTokens(): Promise<SecureTokens | null> {
       await AsyncStorage.removeItem(TOKEN_METADATA_KEY);
       await AsyncStorage.removeItem('termsAcceptedOnce');
       
-      console.log('All secure data cleared');
+      console.log('✅ All secure data cleared');
     } catch (error) {
-      console.error('Failed to clear secure data:', error);
+      console.error('💥 Failed to clear secure data:', error);
       throw new Error('Failed to clear authentication data');
     }
   }
 
   // Update tokens (for refresh)
   async updateTokens(newTokens: Omit<SecureTokens, 'tokenTimestamp'>): Promise<void> {
+    console.log('🔄 Updating tokens...');
     await this.storeTokens(newTokens);
   }
 }
