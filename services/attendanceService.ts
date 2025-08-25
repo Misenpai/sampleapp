@@ -8,7 +8,7 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export interface CheckoutResponse {
   success: boolean;
-  
+
   data?: {
     checkOutTime: string;
     attendanceType: 'FULL_DAY' | 'HALF_DAY';
@@ -36,6 +36,7 @@ export interface TodayAttendanceResponse {
 // Create axios instance with auth interceptor
 const createAuthenticatedClient = async () => {
   const token = await authService.getAccessToken();
+  console.log("🔑 Token used for attendance/today:", token);
   
   return axios.create({
     baseURL: API_BASE,
@@ -49,6 +50,7 @@ const createAuthenticatedClient = async () => {
 
 const createJsonClient = async () => {
   const token = await authService.getAccessToken();
+  console.log("🔑 Token used for attendance/today:", token);
   
   return axios.create({
     baseURL: API_BASE,
@@ -144,62 +146,38 @@ export const checkoutAttendance = async (username: string): Promise<CheckoutResp
       return { success: false, error: "Authentication required. Please login again." };
     }
 
-    const client = await createJsonClient();
-    const { data } = await client.post('/attendance/checkout', {
-      username
+    const token = await authService.getAccessToken();
+    console.log("🔑 Token used for checkout:", token);
+
+    const client = axios.create({
+      baseURL: API_BASE,
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
     });
 
-    return { 
-      success: true, 
-      data: data.data 
+    const { data } = await client.post("/attendance/checkout", { username });
+
+    return {
+      success: true,
+      data: data.data,
     };
   } catch (e: any) {
     console.error("Checkout error:", e);
-    
-    // Handle authentication errors
-    if (e.response?.status === 401) {
-      return { 
-        success: false, 
-        error: "Authentication expired. Please login again." 
-      };
-    }
-    
-    return { 
-      success: false, 
-      error: e.response?.data?.error || e.message || "Checkout failed"
-    };
-  }
-};
 
-export const getTodayAttendance = async (username: string): Promise<TodayAttendanceResponse> => {
-  try {
-    // Check authentication
-    const isAuthenticated = await authService.isAuthenticated();
-    if (!isAuthenticated) {
-      return { success: false, error: "Authentication required. Please login again." };
-    }
-
-    const client = await createJsonClient();
-    const { data } = await client.get(`/attendance/today/${username}`);
-
-    return {
-      success: data.success,
-      data: data.data
-    };
-  } catch (e: any) {
-    console.error("Get today attendance error:", e);
-    
-    // Handle authentication errors
     if (e.response?.status === 401) {
       return {
         success: false,
-        error: "Authentication expired. Please login again."
+        error: "Authentication expired. Please login again.",
       };
     }
-    
+
     return {
       success: false,
-      error: e.response?.data?.error || e.message || "Failed to get attendance"
+      error: e.response?.data?.error || e.message || "Checkout failed",
     };
   }
 };
+

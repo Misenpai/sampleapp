@@ -1,17 +1,17 @@
+import { colors } from "@/constants/colors";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import React from "react";
-import { Pressable, Text, View, StyleSheet } from "react-native";
-import { colors } from "@/constants/colors";
-import { AudioRecording } from "../../types/attendance";
-import { AudioPlayer } from "../audio/AudioPlayer";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   withRepeat,
   withSequence,
-  withTiming,
-  useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import { AudioRecording } from "../../types/attendance";
+import { AudioPlayer } from "../audio/AudioPlayer";
 
 interface AudioSectionProps {
   audioRecording: AudioRecording | null;
@@ -160,6 +160,6 @@ const styles = StyleSheet.create({
   recordedText: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.gray[800],
+    color: colors.background.primary,
   },
 });

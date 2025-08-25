@@ -1,4 +1,5 @@
 // store/attendanceStore.ts
+import { authService } from "@/services/authService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraCapturedPicture } from "expo-camera";
 import { create } from "zustand";
@@ -244,11 +245,21 @@ export const useAttendanceStore = create<AttendanceState>()(
       fetchTodayAttendanceFromServer: async () => {
         const state = get();
         if (!state.userId) return false;
+
         try {
+          const token = await authService.getAccessToken(); // 🔑 grab token
           const res = await fetch(
             `${process.env.EXPO_PUBLIC_API_BASE}/attendance/today/${state.userId}`,
-            { cache: "no-cache" }
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              cache: "no-cache",
+            }
           );
+
           const data = await res.json();
           const today = getTodayDateString();
 

@@ -262,7 +262,7 @@ class AuthService {
   async isAuthenticated(): Promise<boolean> {
     try {
       const tokens = await secureStorageService.getTokens();
-      
+  
       if (!tokens?.accessToken || !tokens?.refreshToken) {
         console.log('No tokens found - user not authenticated');
         return false;
