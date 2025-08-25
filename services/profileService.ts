@@ -9,6 +9,7 @@ export interface ProfileData {
   location: string;
   createdAt: string;
   updatedAt: string;
+  avatar?: import("@/services/avatarStorageService").AvatarData;
 }
 
 export interface ProfileResponse {

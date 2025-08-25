@@ -5,9 +5,9 @@ import { secureStorageService } from "./secureStorageService";
 const STORAGE_KEY = "app_user_data"; // Keep for backward compatibility
 
 export interface UserData {
-  userId: string;  // This is empCode
-  userKey?: string;  // The actual primary key from database
-  name: string;  // username
+  userId: string; 
+  userKey?: string; 
+  name: string;  
   email: string;
   isLoggedIn: boolean;
   hasAcceptedTerms?: boolean;

@@ -62,6 +62,8 @@ class AuthService {
         const tokens = await secureStorageService.getTokens();
         if (tokens?.accessToken) {
           config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+        } else {
+          console.warn('No access token available for request');
         }
         return config;
       },
@@ -78,18 +80,27 @@ class AuthService {
           original._retry = true;
 
           try {
-            const refreshed = await this.refreshAccessToken();
-            if (refreshed) {
-              const tokens = await secureStorageService.getTokens();
-              if (tokens?.accessToken) {
-                original.headers.Authorization = `Bearer ${tokens.accessToken}`;
-                return this.apiClient(original);
+            const tokens = await secureStorageService.getTokens();
+            
+            // Only attempt refresh if we have a refresh token
+            if (tokens?.refreshToken) {
+              const refreshed = await this.refreshAccessToken();
+              if (refreshed) {
+                const newTokens = await secureStorageService.getTokens();
+                if (newTokens?.accessToken) {
+                  original.headers.Authorization = `Bearer ${newTokens.accessToken}`;
+                  return this.apiClient(original);
+                }
               }
             }
+            
+            // No refresh token or refresh failed - redirect to login
+            console.log('Authentication failed - redirecting to login');
+            await this.logout();
+            
           } catch (refreshError) {
             console.error('Token refresh failed:', refreshError);
             await this.logout();
-            return Promise.reject(refreshError);
           }
         }
 
@@ -168,8 +179,11 @@ class AuthService {
   async refreshAccessToken(): Promise<boolean> {
     try {
       const tokens = await secureStorageService.getTokens();
+      
       if (!tokens?.refreshToken) {
-        throw new Error('No refresh token available');
+        console.log('No refresh token available - user needs to login');
+        // Don't throw error, just return false
+        return false;
       }
 
       const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
@@ -195,9 +209,9 @@ class AuthService {
     } catch (error: any) {
       console.error('Token refresh failed:', error);
       
-      // If refresh fails, logout user
+      // If refresh fails with 401, clear tokens
       if (error.response?.status === 401) {
-        await this.logout();
+        await secureStorageService.clearAll();
       }
       
       return false;
@@ -247,12 +261,22 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     try {
+      const tokens = await secureStorageService.getTokens();
+      
+      if (!tokens?.accessToken || !tokens?.refreshToken) {
+        console.log('No tokens found - user not authenticated');
+        return false;
+      }
+
       const isTokenValid = await secureStorageService.isTokenValid();
+      
       if (!isTokenValid) {
         // Try to refresh token
+        console.log('Token expired, attempting refresh...');
         const refreshed = await this.refreshAccessToken();
         return refreshed;
       }
+      
       return true;
     } catch (error) {
       console.error('Authentication check failed:', error);

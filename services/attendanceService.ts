@@ -8,6 +8,7 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE;
 
 export interface CheckoutResponse {
   success: boolean;
+  
   data?: {
     checkOutTime: string;
     attendanceType: 'FULL_DAY' | 'HALF_DAY';

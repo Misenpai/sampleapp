@@ -1,10 +1,12 @@
 // services/secureStorageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Keychain from 'react-native-keychain';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-const ACCESS_TOKEN_SERVICE = 'access_token';
-const REFRESH_TOKEN_SERVICE = 'refresh_token';
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_DATA_KEY = 'user_data';
+const TOKEN_METADATA_KEY = 'token_metadata';
 
 export interface SecureTokens {
   accessToken: string;
@@ -26,88 +28,119 @@ export interface SecureUserData {
 }
 
 class SecureStorageService {
-  // Store tokens securely using Keychain
-  async storeTokens(tokens: Omit<SecureTokens, 'tokenTimestamp'>): Promise<void> {
+  // Check if SecureStore is available (it won't be on web)
+  private async isSecureStoreAvailable(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return false;
+    }
     try {
-      const tokenData: SecureTokens = {
-        ...tokens,
-        tokenTimestamp: Date.now(),
-      };
-
-      // Store access token
-      await Keychain.setGenericPassword(
-        ACCESS_TOKEN_SERVICE,
-        tokenData.accessToken,
-        { service: ACCESS_TOKEN_SERVICE }
-      );
-
-      // Store refresh token
-      await Keychain.setGenericPassword(
-        REFRESH_TOKEN_SERVICE,
-        tokenData.refreshToken,
-        { service: REFRESH_TOKEN_SERVICE }
-      );
-
-      // Store token metadata in AsyncStorage
-      await AsyncStorage.setItem(
-        ACCESS_TOKEN_SERVICE,
-        JSON.stringify({
-          expiresIn: tokenData.expiresIn,
-          tokenTimestamp: tokenData.tokenTimestamp,
-        })
-      );
-
-      console.log('Tokens stored securely');
-    } catch (error) {
-      console.error('Failed to store tokens:', error);
-      throw new Error('Failed to store authentication tokens');
+      // Test if SecureStore is available
+      await SecureStore.getItemAsync('test');
+      return true;
+    } catch {
+      return true; // Even if test fails, SecureStore is available
     }
   }
+
+  // Store tokens securely
+  async storeTokens(tokens: Omit<SecureTokens, 'tokenTimestamp'>): Promise<void> {
+  try {
+    console.log('Storing tokens...');
+    const tokenData: SecureTokens = {
+      ...tokens,
+      tokenTimestamp: Date.now(),
+    };
+
+    const isSecure = await this.isSecureStoreAvailable();
+    console.log('SecureStore available:', isSecure);
+
+    if (isSecure) {
+      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokenData.accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+      console.log('Tokens stored in SecureStore');
+    } else {
+      console.warn('Using AsyncStorage fallback for tokens (less secure)');
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokenData.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+      console.log('Tokens stored in AsyncStorage');
+    }
+
+    await AsyncStorage.setItem(
+      TOKEN_METADATA_KEY,
+      JSON.stringify({
+        expiresIn: tokenData.expiresIn,
+        tokenTimestamp: tokenData.tokenTimestamp,
+      })
+    );
+
+    console.log('Token metadata stored');
+    
+    // Verify storage immediately
+    const storedTokens = await this.getTokens();
+    console.log('Verification - tokens retrieved successfully:', !!storedTokens);
+
+  } catch (error) {
+    console.error('Failed to store tokens:', error);
+    throw new Error('Failed to store authentication tokens');
+  }
+}
 
   // Retrieve tokens from secure storage
-  async getTokens(): Promise<SecureTokens | null> {
-    try {
-      // Retrieve access token
-      const accessCredentials = await Keychain.getGenericPassword({
-        service: ACCESS_TOKEN_SERVICE,
-      });
-      
-      // Retrieve refresh token
-      const refreshCredentials = await Keychain.getGenericPassword({
-        service: REFRESH_TOKEN_SERVICE,
-      });
-      
-      // Retrieve token metadata
-      const tokenMetadata = await AsyncStorage.getItem(ACCESS_TOKEN_SERVICE);
-      
-      if (accessCredentials && refreshCredentials && tokenMetadata) {
-        const metadata = JSON.parse(tokenMetadata);
-        const tokenData: SecureTokens = {
-          accessToken: accessCredentials.password,
-          refreshToken: refreshCredentials.password,
-          expiresIn: metadata.expiresIn,
-          tokenTimestamp: metadata.tokenTimestamp,
-        };
-        
-        // Check if token is expired
-        const now = Date.now();
-        const tokenAge = now - tokenData.tokenTimestamp;
-        const isExpired = tokenAge >= tokenData.expiresIn * 1000;
-        
-        if (isExpired) {
-          console.log('Access token expired, attempting refresh...');
-          return tokenData; // Return expired token for refresh attempt
-        }
-        
-        return tokenData;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Failed to retrieve tokens:', error);
-      return null;
+async getTokens(): Promise<SecureTokens | null> {
+  try {
+    const isSecure = await this.isSecureStoreAvailable();
+    let accessToken: string | null = null;
+    let refreshToken: string | null = null;
+
+    if (isSecure) {
+      // Try to get from SecureStore
+      accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+      refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    } else {
+      // Fallback to AsyncStorage
+      accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+      refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
     }
+
+    // Retrieve token metadata
+    const tokenMetadata = await AsyncStorage.getItem(TOKEN_METADATA_KEY);
+    
+    console.log('Token retrieval debug:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      hasMetadata: !!tokenMetadata,
+    });
+
+    if (accessToken && refreshToken && tokenMetadata) {
+      const metadata = JSON.parse(tokenMetadata);
+      const tokenData: SecureTokens = {
+        accessToken,
+        refreshToken,
+        expiresIn: metadata.expiresIn,
+        tokenTimestamp: metadata.tokenTimestamp,
+      };
+      
+      // Check if token is expired
+      const now = Date.now();
+      const tokenAge = now - tokenData.tokenTimestamp;
+      const isExpired = tokenAge >= tokenData.expiresIn * 1000;
+      
+      console.log('Token status:', {
+        tokenAge: Math.floor(tokenAge / 1000),
+        expiresIn: tokenData.expiresIn,
+        isExpired,
+      });
+      
+      return tokenData;
+    }
+    
+    console.log('No complete token set found');
+    return null;
+  } catch (error) {
+    console.error('Failed to retrieve tokens:', error);
+    return null;
   }
+}
 
   // Store user data (non-sensitive)
   async storeUserData(userData: SecureUserData): Promise<void> {
@@ -168,11 +201,23 @@ class SecureStorageService {
   // Clear all stored data (logout)
   async clearAll(): Promise<void> {
     try {
-      await Keychain.resetGenericPassword({ service: ACCESS_TOKEN_SERVICE });
-      await Keychain.resetGenericPassword({ service: REFRESH_TOKEN_SERVICE });
+      const isSecure = await this.isSecureStoreAvailable();
+      
+      if (isSecure) {
+        // Clear from SecureStore
+        await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      } else {
+        // Clear from AsyncStorage fallback
+        await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+        await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+      
+      // Clear non-sensitive data from AsyncStorage
       await AsyncStorage.removeItem(USER_DATA_KEY);
-      await AsyncStorage.removeItem(ACCESS_TOKEN_SERVICE);
+      await AsyncStorage.removeItem(TOKEN_METADATA_KEY);
       await AsyncStorage.removeItem('termsAcceptedOnce');
+      
       console.log('All secure data cleared');
     } catch (error) {
       console.error('Failed to clear secure data:', error);
