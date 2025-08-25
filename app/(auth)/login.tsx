@@ -1,11 +1,10 @@
-import { colors } from "@/constants/colors";
-import { useAuthStore } from "@/store/authStore";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
+// app/(auth)/login.tsx
+import { useAuthStore } from '@/store/authStore';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,320 +13,270 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-
-const { width } = Dimensions.get("window");
+} from 'react-native';
 
 export default function LoginScreen() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn, isLoading } = useAuthStore();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+
+  const validateForm = (): boolean => {
+    if (!username.trim()) {
+      Alert.alert('Validation Error', 'Please enter your username');
+      return false;
+    }
+    
+    if (!password) {
+      Alert.alert('Validation Error', 'Please enter your password');
+      return false;
+    }
+    
+    if (password.length < 6) {
+      Alert.alert('Validation Error', 'Password must be at least 6 characters long');
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter email and password");
-      return;
+    if (!validateForm() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const success = await signIn(username.trim(), password);
+      
+      if (success) {
+        // Navigation is handled by AuthGate in _layout.tsx
+        console.log('Login successful, navigation handled by AuthGate');
+      }
+      // Error handling is done in the signIn method
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'An unexpected error occurred during login');
+    } finally {
+      setIsSubmitting(false);
     }
-    await signIn(username.trim().toLowerCase(), password);
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
-  };
-
-  const handleForgotPassword = () => {
-    Alert.alert("Password Reset", "Password reset functionality coming soon!");
-  };
+  const isLoginDisabled = isSubmitting || isLoading || !username.trim() || !password;
 
   return (
-    <LinearGradient
-      colors={[colors.primary[500], colors.primary[700]]}
-      style={styles.container}
-    >
+    <>
+      <StatusBar style="light" backgroundColor="#007bff" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* Logo/Brand Section */}
-          <Animated.View
-            entering={FadeInDown.delay(100).springify()}
-            style={styles.logoContainer}
-          >
-            <View style={styles.logoCircle}>
-              <FontAwesome6
-                name="fingerprint"
-                size={50}
-                color={colors.primary[500]}
-              />
-            </View>
-            <Text style={styles.brandName}>Attendance</Text>
-          </Animated.View>
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>
+              Sign in to your account to continue
+            </Text>
+          </View>
 
-          {/* Login Form Card */}
-          <Animated.View
-            entering={FadeInUp.delay(200).springify()}
-            style={styles.formCard}
-          >
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-            <Text style={styles.subtitleText}>Sign in to continue</Text>
-
-            {/* Username Input */}
+          {/* Login Form */}
+          <View style={styles.formContainer}>
+            {/* Username Field */}
             <View style={styles.inputContainer}>
-              <FontAwesome6
-                name="user"
-                size={20}
-                color={colors.gray[400]}
-                style={styles.inputIcon}
-              />
+              <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Username or Email"
-                placeholderTextColor={colors.gray[400]}
+                placeholder="Enter your username"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isSubmitting && !isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  // Focus password field if available
+                }}
               />
             </View>
 
-            {/* Password Input */}
+            {/* Password Field */}
             <View style={styles.inputContainer}>
-              <FontAwesome6
-                name="lock"
-                size={20}
-                color={colors.gray[400]}
-                style={styles.inputIcon}
-              />
+              <Text style={styles.label}>Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={colors.gray[400]}
+                placeholder="Enter your password"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry={!showPassword}
+                secureTextEntry
+                editable={!isSubmitting && !isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <FontAwesome6
-                  name={showPassword ? "eye" : "eye-slash"}
-                  size={20}
-                  color={colors.gray[400]}
-                />
-              </TouchableOpacity>
             </View>
 
             {/* Login Button */}
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+              style={[
+                styles.loginButton,
+                isLoginDisabled && styles.loginButtonDisabled,
+              ]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={isLoginDisabled}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[colors.primary[500], colors.primary[600]]}
-                style={styles.gradientButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.loginButtonText}>
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Text>
-              </LinearGradient>
+              {isSubmitting || isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#ffffff" size="small" />
+                  <Text style={styles.loginButtonText}>Signing In...</Text>
+                </View>
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
-          </Animated.View>
+
+            {/* Security Notice */}
+            <View style={styles.securityNotice}>
+              <Text style={styles.securityText}>
+                🔒 Your session will be valid for 1 hour
+              </Text>
+              <Text style={styles.securitySubText}>
+                For security reasons, you&apos;ll be automatically logged out after 1 hour of login
+              </Text>
+            </View>
+
+            {/* Help Text */}
+            <View style={styles.helpContainer}>
+              <Text style={styles.helpText}>
+                Need help? Contact your system administrator
+              </Text>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#007bff',
   },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
+  scrollContainer: {
     flexGrow: 1,
-    justifyContent: "center",
-    padding: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 30,
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.white,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#e3f2fd',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  formContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 8,
   },
-  brandName: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: colors.white,
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 16,
-    color: colors.gray[200],
-  },
-  formCard: {
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: colors.gray[800],
-    marginBottom: 4,
-  },
-  subtitleText: {
-    fontSize: 16,
-    color: colors.gray[500],
-    marginBottom: 24,
-  },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.gray[50],
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    height: 56,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
+    marginBottom: 20,
   },
-  inputIcon: {
-    marginRight: 12,
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
   },
   input: {
-    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: colors.gray[800],
-  },
-  eyeIcon: {
-    padding: 4,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  rememberContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: colors.gray[300],
-    marginRight: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  rememberText: {
-    fontSize: 14,
-    color: colors.gray[600],
-  },
-  forgotText: {
-    fontSize: 14,
-    color: colors.primary[500],
-    fontWeight: "600",
+    backgroundColor: '#f9fafb',
+    color: '#111827',
   },
   loginButton: {
-    marginBottom: 20,
-    borderRadius: 12,
-    overflow: "hidden",
+    backgroundColor: '#007bff',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#007bff',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  gradientButton: {
-    height: 56,
-    justifyContent: "center",
-    alignItems: "center",
+  loginButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   loginButtonText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: "600",
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
+  securityNotice: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0ea5e9',
   },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.gray[200],
-  },
-  dividerText: {
-    marginHorizontal: 16,
+  securityText: {
     fontSize: 14,
-    color: colors.gray[400],
-    fontWeight: "500",
+    fontWeight: '600',
+    color: '#0c4a6e',
+    marginBottom: 4,
   },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    marginBottom: 24,
+  securitySubText: {
+    fontSize: 12,
+    color: '#0369a1',
+    lineHeight: 16,
   },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: colors.gray[50],
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.gray[200],
+  helpContainer: {
+    marginTop: 16,
+    alignItems: 'center',
   },
-  signupContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  signupText: {
-    fontSize: 14,
-    color: colors.gray[600],
-  },
-  signupLink: {
-    fontSize: 14,
-    color: colors.primary[500],
-    fontWeight: "600",
+  helpText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });

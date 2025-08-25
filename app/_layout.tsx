@@ -1,7 +1,12 @@
 // app/_layout.tsx
+import { SessionTimer } from "@/component/ui/SessionTimer";
+import { TermsAndConditionsScreen } from "@/component/ui/TermsAndConditionsScreen";
 import { useAudio } from "@/hooks/useAudio";
 import { useCamera } from "@/hooks/useCamera";
 import { useGeofence as useLocation } from "@/hooks/useGeofence";
+import { notificationService } from "@/services/pushNotificationService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import {
   router,
   Stack,
@@ -10,19 +15,25 @@ import {
 } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { Alert, AppState, View } from "react-native";
 import { useAuthStore } from "../store/authStore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TermsAndConditionsScreen } from "@/component/ui/TermsAndConditionsScreen";
-import { View } from "react-native";
-import Constants from "expo-constants";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, isLoading, isInitialized, initializeAuth } = useAuthStore();
+  const { 
+    isAuthenticated, 
+    isLoading, 
+    isInitialized, 
+    initializeAuth,
+    checkSessionStatus,
+    handleSessionExpiry 
+  } = useAuthStore();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!isInitialized) initializeAuth();
+    if (!isInitialized) {
+      initializeAuth();
+    }
   }, [isInitialized, initializeAuth]);
 
   useEffect(() => {
@@ -30,22 +41,43 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     const inAuthGroup = segments[0] === "(auth)";
 
-    if (!session && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup) {
       router.replace("/(auth)/login");
-    } else if (session && inAuthGroup) {
+    } else if (isAuthenticated && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [session, segments, navigationState?.key, isLoading, isInitialized]);
+  }, [isAuthenticated, segments, navigationState?.key, isLoading, isInitialized]);
+
+  // Handle app state changes for session management
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        // App came to foreground, check session status
+        try {
+          await checkSessionStatus();
+        } catch (error) {
+          console.error('Session check failed:', error);
+          await handleSessionExpiry();
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [isAuthenticated, checkSessionStatus, handleSessionExpiry]);
 
   return <>{children}</>;
 }
 
 function TermsGate({ children }: { children: React.ReactNode }) {
-  const [hasAcceptedTerms, setHasAcceptedTerms] = useState<boolean | null>(
-    null,
-  );
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState<boolean | null>(null);
   const [processing, setProcessing] = useState(false);
-  const { session } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
   const { requestPermission: requestCamera } = useCamera();
   const { requestPermission: requestMic } = useAudio();
@@ -70,13 +102,31 @@ function TermsGate({ children }: { children: React.ReactNode }) {
     setProcessing(true);
     try {
       // Request all required permissions
-      await Promise.all([requestCamera(), requestMic(), requestLocation()]);
+      const [cameraGranted, micGranted, locationGranted] = await Promise.all([
+        requestCamera(),
+        requestMic(), 
+        requestLocation()
+      ]);
 
-      // Mark terms as accepted permanently (survives app reinstalls only if not clearing app data)
+      if (!cameraGranted || !micGranted || !locationGranted) {
+        Alert.alert(
+          'Permissions Required',
+          'All permissions are required for the app to function properly. Please grant all permissions.',
+          [{ text: 'OK' }]
+        );
+        setProcessing(false);
+        return;
+      }
+
+      // Initialize notification service
+      await notificationService.initialize();
+
+      // Mark terms as accepted permanently
       await AsyncStorage.setItem("termsAcceptedOnce", "true");
       setHasAcceptedTerms(true);
     } catch (error) {
       console.error("Error accepting terms:", error);
+      Alert.alert('Error', 'Failed to initialize app. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -88,7 +138,7 @@ function TermsGate({ children }: { children: React.ReactNode }) {
   }
 
   // Show terms only if not accepted AND user is logged in
-  if (!hasAcceptedTerms && session) {
+  if (!hasAcceptedTerms && isAuthenticated) {
     return (
       <TermsAndConditionsScreen
         isProcessing={processing}
@@ -100,12 +150,32 @@ function TermsGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function SessionStatusBar() {
+  const { isAuthenticated } = useAuthStore();
+  
+  if (!isAuthenticated) return null;
+  
+  return (
+    <View style={{ 
+      backgroundColor: '#f8f9fa', 
+      paddingHorizontal: 16, 
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: '#e9ecef'
+    }}>
+      <SessionTimer />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   return (
     <AuthGate>
       <TermsGate>
-        {/* reserve space for the status bar */}
+        {/* Reserve space for the status bar */}
         <View style={{ flex: 1, paddingTop: Constants.statusBarHeight }}>
+          <SessionStatusBar />
+          
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
